@@ -4,7 +4,9 @@ This file provides guidance for Claude Code when working on the STRIDE GPT MCP s
 
 ## Overview
 
-This is an MCP (Model Context Protocol) server that provides threat modeling tools using the STRIDE methodology. The server provides frameworks and structure for LLM clients to perform security analysis.
+This is a serverless MCP (Model Context Protocol) HTTP server deployed on Vercel that provides threat modeling tools using the STRIDE methodology. The server provides frameworks and structure for LLM clients to perform security analysis.
+
+**🌐 Hosted at**: https://mcp.stridegpt.ai/
 
 ## CRITICAL: No Keyword Matching
 
@@ -21,29 +23,27 @@ if any(term in combined_text for term in ["system compromise", "admin"]):
 
 ### Correct Approach (DO THIS):
 ```python
-def _analyze_damage_potential(threat_analysis: Dict[str, Any]) -> int:
-    """Provide DREAD damage scoring framework - LLM client should analyze threat context.
+def get_stride_threat_framework(args: Dict[str, Any]) -> Dict[str, Any]:
+    """Provide STRIDE threat modeling framework for LLM client analysis.
     
-    Damage scoring considers:
-    - Financial impact to the organization
-    - Regulatory/compliance consequences
-    - Data sensitivity implications
-    - Business continuity disruption
-    
-    Score 1-3: Minor impact, localized effects
-    Score 4-6: Moderate impact, departmental effects
-    Score 7-8: High impact, organizational effects
-    Score 9-10: Severe impact, industry/regulatory effects
+    Returns comprehensive framework with:
+    - STRIDE categories and threat examples
+    - Extended threat domains (AI/ML, cloud, IoT, etc.)
+    - Application context analysis
+    - Analysis guidance for LLM client
     """
-    # Return placeholder - LLM client should replace with actual analysis
-    return 5
+    return {
+        "stride_framework": { /* framework data */ },
+        "application_context": { /* app context */ },
+        "analysis_guidance": "Use this framework to analyze threats..."
+    }
 ```
 
-## MCP Server Architecture
+## Serverless Architecture
 
-- **server.py**: FastMCP server entry point
-- **tools.py**: All 8 STRIDE threat modeling tools
-- **models.py**: Pydantic data models for structured responses
+- **api/index.py**: Single-file Vercel serverless function
+- **vercel.json**: Deployment configuration
+- **CLAUDE.md**: Development guidelines (this file)
 
 ## Key Principles
 
@@ -62,15 +62,35 @@ def _analyze_damage_potential(threat_analysis: Dict[str, Any]) -> int:
 - Users can combine GitHub MCP server (for repo analysis) with STRIDE GPT MCP server (for threat modeling)
 - This follows MCP philosophy of composable, specialized tools
 
-## Tool Functions
+## Available Tools
+
+The serverless MCP server provides 7 core threat modeling tools:
+
+1. **get_stride_threat_framework**: Core STRIDE threat modeling framework with extended domains (AI/ML, cloud, IoT)
+2. **generate_threat_mitigations**: Actionable security mitigations with implementation guidance  
+3. **calculate_threat_risk_scores**: DREAD risk assessment with scoring criteria
+4. **create_threat_attack_trees**: Hierarchical attack trees with Mermaid diagram support
+5. **generate_security_tests**: Security test cases in multiple formats (Gherkin, Checklist, Markdown)
+6. **generate_threat_report**: Professional markdown reports for executive consumption
+7. **validate_threat_coverage**: STRIDE coverage validation and enhancement suggestions
+
+## Tool Design Principles
 
 Each tool should:
-- Accept structured threat data
-- Provide clear frameworks and rubrics
-- Return placeholders for LLM client to replace with actual analysis
-- Include comprehensive docstrings explaining the framework
-- Focus on batch processing to minimize latency
+- Accept structured threat data via JSON-RPC parameters
+- Provide comprehensive frameworks and rubrics
+- Return rich framework data (not placeholders) for LLM client analysis
+- Include detailed analysis guidance in responses
+- Support batch processing for efficiency
 
-## Testing
+## Deployment & Testing
 
-Use the MCP server directly through Claude Desktop or the MCP client to test tools with real threat data and verify outputs provide meaningful differentiation.
+**Hosted Server**: https://mcp.stridegpt.ai/
+
+**Testing Methods**:
+- Use MCP server directly through an MCP client (e.g. Claude Code, Gemini CLI) configuration
+- Test via MCP client tools for development
+- Validate with real threat modeling scenarios
+- Ensure consistent behavior across different LLM clients
+
+**Local Development**: Modify `api/index.py` and deploy to Vercel for testing

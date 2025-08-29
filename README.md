@@ -176,23 +176,23 @@ STRIDE GPT MCP server is designed to work seamlessly with other specialized MCP 
 
 ### Core Analysis Tools
 
-#### `analyze_application_threats`
-**Description**: Generate comprehensive STRIDE threat model for an application
+#### `get_stride_threat_framework`
+**Description**: Get comprehensive STRIDE threat modeling framework and guidance for threat analysis
 
 **Inputs**:
-- `app_description` (string, required): Detailed description of the application
+- `app_description` (string, required): Detailed description of the application architecture and functionality
 - `app_type` (string, default: "Web Application"): Type of application
-- `authentication_methods` (array, default: ["Username/Password"]): Auth methods used
-- `internet_facing` (boolean, default: true): Whether app is internet-accessible
-- `sensitive_data_types` (array, default: ["User Data"]): Types of sensitive data
+- `authentication_methods` (array, default: ["Username/Password"]): List of authentication methods used
+- `internet_facing` (boolean, default: true): Whether the application is accessible from the internet
+- `sensitive_data_types` (array, default: ["User Data"]): Types of sensitive data handled
 
-**Output**: Complete threat model with threats categorized by STRIDE, architecture components, trust boundaries, and coverage analysis
+**Output**: STRIDE threat modeling framework with categories, extended threat domains (AI/ML, cloud, IoT, etc.), application context, and analysis guidance
 
 #### `generate_threat_mitigations`
 **Description**: Generate security mitigations for multiple threats
 
 **Inputs**:
-- `threats` (array, required): Array of threat objects from analyze_application_threats
+- `threats` (array, required): Array of threat objects from get_stride_threat_framework
 - `priority_filter` (string, default: "all"): Filter by "all", "high", "medium", "low"
 
 **Output**: Comprehensive mitigation strategies with implementation difficulty, priorities, and defense layer categorization
@@ -256,7 +256,7 @@ STRIDE GPT MCP server is designed to work seamlessly with other specialized MCP 
 
 ```json
 {
-  "tool": "analyze_application_threats",
+  "tool": "get_stride_threat_framework",
   "arguments": {
     "app_description": "E-commerce platform with user registration, product catalog, shopping cart, payment processing via Stripe, and order management. Uses React frontend, Node.js/Express backend, PostgreSQL database, and Redis for session storage.",
     "app_type": "Web Application",
@@ -283,7 +283,7 @@ Use GitHub MCP to analyze repository:
 **Step 2: Threat Modeling (STRIDE GPT MCP)**
 ```json
 {
-  "tool": "analyze_application_threats",
+  "tool": "get_stride_threat_framework",
   "arguments": {
     "app_description": "FastAPI web framework - high-performance Python API framework with OAuth2/JWT support, dependency injection, automatic OpenAPI docs, built on Starlette/Pydantic. Handles routing, middleware, authentication, validation for internet-facing APIs.",
     "app_type": "API Service", 
@@ -318,7 +318,7 @@ Use GitHub MCP to analyze repository:
 
 ### Complete Security Assessment Workflow
 
-1. **Generate Threats**: Use `analyze_application_threats` to get comprehensive threat model
+1. **Generate Framework**: Use `get_stride_threat_framework` to get comprehensive threat modeling framework
 2. **Assess Risk**: Use `calculate_threat_risk_scores` with the threats from step 1
 3. **Plan Mitigations**: Use `generate_threat_mitigations` with high-priority threats
 4. **Create Documentation**: Use `generate_threat_report` to generate final report
@@ -326,40 +326,43 @@ Use GitHub MCP to analyze repository:
 
 ## Development
 
-### Running in Development Mode
+### Serverless Development
 
+This MCP server is deployed as a serverless function on Vercel. The main implementation is in `api/index.py`.
+
+**Local Development:**
 ```bash
-# Start development server
-uv run mcp dev src/stride_mcp/server.py
+# Install Vercel CLI
+npm install -g vercel
 
-# Run with specific transport
-uv run python src/stride_mcp/server.py --transport stdio
+# Run local development server
+vercel dev
+
+# Deploy to Vercel
+vercel --prod
 ```
 
-### Testing
-
-```bash
-# Run tests
-uv run pytest
-
-# Type checking
-uv run pyright
-
-# Linting
-uv run ruff check .
-uv run ruff format .
-```
+**Testing:**
+- Test via MCP client configuration pointing to local dev server
+- Deploy to Vercel for production testing
+- Validate MCP JSON-RPC responses using curl or HTTP clients
 
 ## Architecture
 
-The server is built using the MCP Python SDK and follows these design principles:
+The server is built as a serverless HTTP function deployed on Vercel and follows these design principles:
 
-- **Framework-Based Design**: MCP server provides comprehensive threat modeling frameworks and guidance through detailed docstrings; LLM clients perform the actual semantic analysis and threat generation
+- **Serverless HTTP Implementation**: Single-file Python serverless function handling MCP JSON-RPC over HTTP
+- **Framework-Based Design**: MCP server provides comprehensive threat modeling frameworks and guidance; LLM clients perform the actual semantic analysis and threat generation  
 - **Composable MCP Pattern**: Designed to work alongside other specialized MCP servers (e.g., GitHub MCP for repository analysis)
-- **Structured Output**: Uses Pydantic models for consistent, validated outputs across all tools
+- **Structured JSON Output**: Returns structured JSON data with comprehensive framework information
 - **Comprehensive Guidance**: Each tool includes extensive documentation and framework guidance for high-quality threat modeling
 - **Stateless Design**: Each tool call is independent and self-contained with no persistent state
 - **Professional Quality**: Tools generate executive-ready reports and actionable security recommendations
+
+**Key Components:**
+- `api/index.py`: Main serverless function with all MCP tools and HTTP request handling
+- `vercel.json`: Deployment configuration and routing
+- MCP JSON-RPC protocol implementation for tool discovery and execution
 
 ## STRIDE Methodology
 

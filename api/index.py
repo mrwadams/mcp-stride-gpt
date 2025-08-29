@@ -773,7 +773,7 @@ class handler(BaseHTTPRequestHandler):
             "version": "0.1.0", 
             "description": "Professional threat modeling server using the STRIDE methodology",
             "tools": [
-                "analyze_application_threats",
+                "get_stride_threat_framework",
                 "generate_threat_mitigations", 
                 "create_threat_attack_trees",
                 "calculate_threat_risk_scores",
