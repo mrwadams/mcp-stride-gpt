@@ -28,7 +28,7 @@ def get_stride_threat_framework(args: Dict[str, Any]) -> Dict[str, Any]:
     auth_methods = args.get('authentication_methods', ['Username/Password'])
     internet_facing = args.get('internet_facing', True)
     sensitive_data = args.get('sensitive_data_types', ['User Data'])
-    
+
     return {
         "stride_framework": {
             "description": "STRIDE threat modeling methodology for systematic security analysis",
@@ -38,14 +38,14 @@ def get_stride_threat_framework(args: Dict[str, Any]) -> Dict[str, Any]:
                     "description": "Impersonating something or someone else",
                     "threat_examples": [
                         "Authentication bypass",
-                        "Identity theft/impersonation", 
+                        "Identity theft/impersonation",
                         "Credential compromise",
                         "Session hijacking",
                         "Certificate/token forgery"
                     ]
                 },
                 "T": {
-                    "name": "Tampering", 
+                    "name": "Tampering",
                     "description": "Modifying data or code",
                     "threat_examples": [
                         "Data manipulation/corruption",
@@ -82,7 +82,7 @@ def get_stride_threat_framework(args: Dict[str, Any]) -> Dict[str, Any]:
                     "description": "Denying or degrading service availability",
                     "threat_examples": [
                         "Resource exhaustion",
-                        "Service flooding/overload", 
+                        "Service flooding/overload",
                         "Infrastructure disruption",
                         "Performance degradation",
                         "Availability attacks"
@@ -109,7 +109,7 @@ def get_stride_threat_framework(args: Dict[str, Any]) -> Dict[str, Any]:
                 ],
                 "cloud_infrastructure": [
                     "Misconfigured services/permissions",
-                    "Container/orchestration vulnerabilities", 
+                    "Container/orchestration vulnerabilities",
                     "API gateway security issues",
                     "Serverless function attacks"
                 ],
@@ -148,20 +148,33 @@ def get_stride_threat_framework(args: Dict[str, Any]) -> Dict[str, Any]:
             "internet_facing": internet_facing,
             "sensitive_data_types": sensitive_data
         },
-        "analysis_guidance": "Use this STRIDE framework to systematically identify specific threats for the described application. Consider which extended threat domains are relevant based on the application's architecture, technology stack, and deployment model. The LLM client should analyze the application context and select appropriate threats from each STRIDE category and relevant threat domain."
+        "analysis_guidance": "Use this STRIDE framework to systematically identify specific threats for the described application. Consider which extended threat domains are relevant based on the application's architecture, technology stack, and deployment model. The LLM client should analyze the application context and select appropriate threats from each STRIDE category and relevant threat domain.",
+        "next_steps": {
+            "recommended_workflow": [
+                "1. Analyze application using STRIDE framework to identify specific threats",
+                "2. Document each threat with ID, category, and description",
+                "3. Call calculate_threat_risk_scores with your threat list",
+                "4. Call validate_threat_coverage to check completeness",
+                "5. Generate mitigations for high-priority threats"
+            ],
+            "optional_tools": [
+                "create_threat_attack_trees - Visualize attack paths",
+                "generate_security_tests - Create test cases"
+            ]
+        }
     }
 
 def generate_threat_mitigations(args: Dict[str, Any]) -> Dict[str, Any]:
     """Provide mitigation framework for LLM client analysis."""
     threats = args.get('threats', [])
     priority_filter = args.get('priority_filter', 'all')
-    
+
     return {
         "mitigation_framework": {
             "description": "Structured approach to generate threat mitigations",
             "categories": {
                 "Preventive": "Controls that prevent threats from occurring",
-                "Detective": "Controls that detect when threats occur", 
+                "Detective": "Controls that detect when threats occur",
                 "Corrective": "Controls that respond to and recover from threats"
             },
             "difficulty_levels": {
@@ -177,14 +190,22 @@ def generate_threat_mitigations(args: Dict[str, Any]) -> Dict[str, Any]:
         },
         "threat_context": threats,
         "priority_filter": priority_filter,
-        "analysis_guidance": "For each threat provided, generate specific, actionable mitigation strategies. Consider defense-in-depth principles and prioritize based on risk level and implementation difficulty."
+        "analysis_guidance": "For each threat provided, generate specific, actionable mitigation strategies. Consider defense-in-depth principles and prioritize based on risk level and implementation difficulty.",
+        "next_steps": {
+            "after_mitigations": [
+                "1. Call generate_security_tests to create test cases",
+                "2. Call create_threat_attack_trees to visualize attack paths",
+                "3. Call generate_threat_report to create deliverable document",
+                "4. Implement high-priority preventive controls first"
+            ]
+        }
     }
 
 def calculate_threat_risk_scores(args: Dict[str, Any]) -> Dict[str, Any]:
     """Provide DREAD scoring framework for LLM client analysis."""
     threats = args.get('threats', [])
     scoring_guidance = args.get('scoring_guidance', {})
-    
+
     return {
         "dread_framework": {
             "description": "DREAD risk assessment methodology for threat prioritization",
@@ -211,20 +232,202 @@ def calculate_threat_risk_scores(args: Dict[str, Any]) -> Dict[str, Any]:
                 },
                 "Discoverability": {
                     "description": "How easy is it to discover the threat?",
-                    "scale": "1-10 (1=very hard, 10=very easy)", 
+                    "scale": "1-10 (1=very hard, 10=very easy)",
                     "factors": ["Visibility of attack surface", "Documentation availability", "Common vulnerability"]
                 }
             },
             "risk_levels": {
                 "Critical": "40-50 points - Immediate action required",
-                "High": "30-39 points - High priority for remediation", 
+                "High": "30-39 points - High priority for remediation",
                 "Medium": "20-29 points - Medium priority",
                 "Low": "5-19 points - Low priority but should be addressed"
             }
         },
+        "calibration_guidance": {
+            "damage": {
+                "1-3": "Minimal: Affects single user, non-critical functionality, easily recoverable",
+                "4-6": "Moderate: Affects multiple users, important functionality, recovery required",
+                "7-9": "High: Affects most users, critical functionality, difficult recovery",
+                "10": "Catastrophic: Complete system compromise, all users affected, irrecoverable"
+            },
+            "reproducibility": {
+                "1-3": "Difficult: Requires specific timing, race conditions, or rare circumstances",
+                "4-6": "Moderate: Requires specific configuration or user actions",
+                "7-9": "Easy: Reproducible with standard tools and documentation",
+                "10": "Always: 100% reproducible, deterministic"
+            },
+            "exploitability": {
+                "1-3": "Expert: Requires deep expertise, custom tools, significant time investment",
+                "4-6": "Intermediate: Requires moderate skill, some tool customization",
+                "7-9": "Basic: Standard tools and scripts available, minimal expertise needed",
+                "10": "Trivial: No technical skill required, fully automated tools exist"
+            },
+            "affected_users": {
+                "1-3": "Few: < 10% of users, isolated impact",
+                "4-6": "Some: 10-50% of users, limited scope",
+                "7-9": "Most: 50-90% of users, widespread impact",
+                "10": "All: 100% of users affected, system-wide impact"
+            },
+            "discoverability": {
+                "1-3": "Hidden: Requires source code review, insider knowledge, or deep analysis",
+                "4-6": "Obscure: Requires investigation, testing, or documentation review",
+                "7-9": "Obvious: Visible through normal usage or basic testing",
+                "10": "Public: Documented, well-known, or immediately apparent"
+            }
+        },
+        "scoring_examples": [
+            {
+                "threat": "SQL Injection in public-facing API endpoint",
+                "context": "E-commerce website with customer database",
+                "dread_breakdown": {
+                    "Damage": {
+                        "score": 10,
+                        "rationale": "Complete database compromise, customer PII exposure, financial data theft"
+                    },
+                    "Reproducibility": {
+                        "score": 9,
+                        "rationale": "Easily reproducible with standard tools (SQLMap), well-documented technique"
+                    },
+                    "Exploitability": {
+                        "score": 8,
+                        "rationale": "Requires basic SQL knowledge, automated tools available, public exploits exist"
+                    },
+                    "Affected_Users": {
+                        "score": 10,
+                        "rationale": "All users' data potentially exposed, entire database accessible"
+                    },
+                    "Discoverability": {
+                        "score": 9,
+                        "rationale": "Common vulnerability, easily detected by automated scanners, OWASP Top 10"
+                    },
+                    "total": 46,
+                    "priority": "Critical"
+                }
+            },
+            {
+                "threat": "Insufficient audit logging for admin actions",
+                "context": "Internal business application",
+                "dread_breakdown": {
+                    "Damage": {
+                        "score": 6,
+                        "rationale": "Enables malicious activity without detection, complicates forensics, compliance risk"
+                    },
+                    "Reproducibility": {
+                        "score": 10,
+                        "rationale": "Always reproducible - logging is either present or not"
+                    },
+                    "Exploitability": {
+                        "score": 5,
+                        "rationale": "Requires legitimate admin access first, not directly exploitable"
+                    },
+                    "Affected_Users": {
+                        "score": 7,
+                        "rationale": "Affects incident response capability, impacts all users indirectly"
+                    },
+                    "Discoverability": {
+                        "score": 6,
+                        "rationale": "Requires code review or documentation review to discover"
+                    },
+                    "total": 34,
+                    "priority": "High"
+                }
+            },
+            {
+                "threat": "Weak password policy (minimum 6 characters, no complexity)",
+                "context": "Consumer web application",
+                "dread_breakdown": {
+                    "Damage": {
+                        "score": 7,
+                        "rationale": "Individual account compromise, potential for credential stuffing"
+                    },
+                    "Reproducibility": {
+                        "score": 8,
+                        "rationale": "Brute force attacks are reliable with weak passwords"
+                    },
+                    "Exploitability": {
+                        "score": 7,
+                        "rationale": "Requires password hash access or online brute force, standard tools available"
+                    },
+                    "Affected_Users": {
+                        "score": 6,
+                        "rationale": "Affects users who choose weak passwords, not all users"
+                    },
+                    "Discoverability": {
+                        "score": 8,
+                        "rationale": "Easily discoverable during registration or password change"
+                    },
+                    "total": 36,
+                    "priority": "High"
+                }
+            },
+            {
+                "threat": "Missing CSRF protection on low-impact form",
+                "context": "User preference settings update",
+                "dread_breakdown": {
+                    "Damage": {
+                        "score": 3,
+                        "rationale": "Limited to changing non-critical user preferences"
+                    },
+                    "Reproducibility": {
+                        "score": 8,
+                        "rationale": "Easily reproducible with standard CSRF techniques"
+                    },
+                    "Exploitability": {
+                        "score": 6,
+                        "rationale": "Requires social engineering to get user to visit malicious page"
+                    },
+                    "Affected_Users": {
+                        "score": 4,
+                        "rationale": "Affects individual users who fall victim to social engineering"
+                    },
+                    "Discoverability": {
+                        "score": 7,
+                        "rationale": "Detectable with automated security scanners"
+                    },
+                    "total": 28,
+                    "priority": "Medium"
+                }
+            },
+            {
+                "threat": "Information disclosure via verbose error messages",
+                "context": "Stack traces exposed to users in production",
+                "dread_breakdown": {
+                    "Damage": {
+                        "score": 5,
+                        "rationale": "Reveals internal structure, file paths, technology versions - aids reconnaissance"
+                    },
+                    "Reproducibility": {
+                        "score": 7,
+                        "rationale": "Reproducible by triggering error conditions"
+                    },
+                    "Exploitability": {
+                        "score": 6,
+                        "rationale": "Requires ability to trigger errors, not directly exploitable"
+                    },
+                    "Affected_Users": {
+                        "score": 5,
+                        "rationale": "Information disclosure to potential attackers, indirect user impact"
+                    },
+                    "Discoverability": {
+                        "score": 8,
+                        "rationale": "Easily discovered through normal usage and error triggering"
+                    },
+                    "total": 31,
+                    "priority": "High"
+                }
+            }
+        ],
         "threats": threats,
         "scoring_guidance": scoring_guidance,
-        "analysis_guidance": "Score each threat using the DREAD criteria. Provide justification for each score based on the specific threat characteristics and application context."
+        "analysis_guidance": "Score each threat using the DREAD criteria. Provide justification for each score based on the specific threat characteristics and application context.",
+        "next_steps": {
+            "after_scoring": [
+                "1. Prioritize threats by DREAD score (Critical: 40-50, High: 30-39)",
+                "2. Call validate_threat_coverage to ensure no gaps",
+                "3. Call generate_threat_mitigations for high-priority threats",
+                "4. Consider create_threat_attack_trees for critical threats"
+            ]
+        }
     }
 
 def create_threat_attack_trees(args: Dict[str, Any]) -> Dict[str, Any]:
@@ -232,7 +435,7 @@ def create_threat_attack_trees(args: Dict[str, Any]) -> Dict[str, Any]:
     threats = args.get('threats', [])
     max_depth = args.get('max_depth', 3)
     output_format = args.get('output_format', 'both')
-    
+
     return {
         "attack_tree_framework": {
             "description": "Hierarchical representation of attack paths and methods",
@@ -245,9 +448,47 @@ def create_threat_attack_trees(args: Dict[str, Any]) -> Dict[str, Any]:
             "common_patterns": {
                 "reconnaissance": ["Information gathering", "System enumeration", "Social engineering"],
                 "initial_access": ["Phishing", "Credential stuffing", "Vulnerability exploitation"],
-                "privilege_escalation": ["Local exploits", "Credential theft", "Authorization bypass"], 
+                "privilege_escalation": ["Local exploits", "Credential theft", "Authorization bypass"],
                 "persistence": ["Backdoors", "Scheduled tasks", "Registry modification"],
                 "exfiltration": ["Data staging", "Command and control", "Covert channels"]
+            }
+        },
+        "output_formats": {
+            "text": {
+                "description": "ASCII tree structure using └── and ├── characters",
+                "example": """Goal: Steal API Keys
+├── [OR] Exploit Public Deployment
+│   ├── Access public instance
+│   └── Extract from browser
+└── [OR] Exploit Local Deployment
+    └── Read .env file"""
+            },
+            "mermaid": {
+                "description": "Mermaid.js graph syntax for rendering diagrams",
+                "example": """graph TD
+    A[Steal API Keys] --> B{OR}
+    B --> C[Exploit Public]
+    B --> D[Exploit Local]
+    C --> E[Access instance]
+    C --> F[Extract from browser]
+    D --> G[Read .env file]"""
+            },
+            "json": {
+                "description": "Structured JSON representation",
+                "example": {
+                    "root": "Steal API Keys",
+                    "type": "OR",
+                    "children": [
+                        {
+                            "goal": "Exploit Public Deployment",
+                            "methods": ["Access instance", "Extract from browser"]
+                        }
+                    ]
+                }
+            },
+            "both": {
+                "description": "Returns both text and mermaid formats",
+                "note": "Current default, provides multiple visualization options"
             }
         },
         "threat_context": threats,
@@ -261,7 +502,7 @@ def generate_security_tests(args: Dict[str, Any]) -> Dict[str, Any]:
     threats = args.get('threats', [])
     test_type = args.get('test_type', 'mixed')
     format_type = args.get('format_type', 'gherkin')
-    
+
     return {
         "security_testing_framework": {
             "description": "Structured approach to validate threat mitigations through testing",
@@ -278,10 +519,57 @@ def generate_security_tests(args: Dict[str, Any]) -> Dict[str, Any]:
             },
             "coverage_areas": {
                 "authentication": "Identity verification and access controls",
-                "authorization": "Permission and privilege validation", 
+                "authorization": "Permission and privilege validation",
                 "input_validation": "Data sanitization and bounds checking",
                 "encryption": "Data protection in transit and at rest",
                 "logging": "Security event detection and recording"
+            }
+        },
+        "use_cases": {
+            "unit_testing": {
+                "description": "Generate unit tests for security functions",
+                "example": "Test input validation, authentication checks, authorization logic"
+            },
+            "integration_testing": {
+                "description": "Generate integration tests for security flows",
+                "example": "Test end-to-end authentication, authorization workflows"
+            },
+            "manual_testing": {
+                "description": "Generate test cases for manual security testing",
+                "example": "Penetration testing checklists, security review procedures"
+            },
+            "automated_security_scanning": {
+                "description": "Generate test scenarios for security scanners",
+                "example": "DAST tool configurations, security test automation"
+            }
+        },
+        "format_examples": {
+            "gherkin": {
+                "description": "Behavior-driven development test scenarios",
+                "example": """Feature: API Authentication
+  Scenario: Unauthorized access attempt
+    Given I am not authenticated
+    When I attempt to access protected endpoint
+    Then I should receive 401 Unauthorized
+    And no sensitive data should be returned"""
+            },
+            "checklist": {
+                "description": "Manual testing checklist",
+                "example": """## SQL Injection Testing
+- [ ] Test input validation with SQL metacharacters
+- [ ] Verify parameterized queries are used
+- [ ] Check error messages don't reveal database structure
+- [ ] Test time-based blind injection"""
+            },
+            "markdown": {
+                "description": "Structured test documentation",
+                "example": """### Test Case: XSS Protection
+**Objective**: Verify XSS prevention in user input fields
+**Steps**:
+1. Submit XSS payload in username field
+2. Verify output is properly escaped
+3. Check CSP headers are present
+**Expected**: Script tags rendered as text, not executed"""
             }
         },
         "threat_context": threats,
@@ -291,70 +579,149 @@ def generate_security_tests(args: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 def generate_threat_report(args: Dict[str, Any]) -> str:
-    """Provide threat report template for LLM client analysis."""
+    """Generate threat report as formatted markdown string for LLM client analysis.
+
+    CRITICAL: This function MUST return a string (the markdown report), not a dict.
+    The MCP handler expects content[0].text to be a string.
+    """
     threat_model = args.get('threat_model', [])
+    mitigations = args.get('mitigations', [])
+    dread_scores = args.get('dread_scores', [])
+    attack_trees = args.get('attack_trees', [])
     include_sections = args.get('include_sections', ['executive_summary', 'threats', 'mitigations', 'risk_scores'])
-    
-    report_template = """# STRIDE Threat Model Report
 
-## Executive Summary
-*Provide a high-level overview of the threat modeling exercise, key findings, and recommended actions.*
+    # Build the markdown report as a string
+    report = "# STRIDE Threat Model Report\n\n"
 
-## Application Overview
-*Describe the application architecture, components, and security-relevant characteristics.*
+    if 'executive_summary' in include_sections:
+        report += """## Executive Summary
 
-## Threat Analysis
-*Detail the identified threats organized by STRIDE category.*
+*This section should provide a high-level overview of the threat modeling exercise, key findings, and recommended actions.*
+
+**Instructions for LLM client:**
+- Summarize the total number of threats identified across STRIDE categories
+- Highlight critical and high-priority threats
+- Provide key recommendations for immediate action
+- Include risk assessment summary
+
+"""
+
+    report += """## Application Overview
+
+*Describe the application architecture, components, and security-relevant characteristics based on the application context used for threat modeling.*
+
+"""
+
+    if 'threats' in include_sections:
+        report += """## Threat Analysis
+
+*Detail the identified threats organized by STRIDE category. For each threat, include:*
+- Threat ID
+- Description
+- STRIDE category
+- Attack scenarios
+- Potential impact
 
 ### Spoofing Threats
-*List and describe spoofing-related threats*
+*List and describe spoofing-related threats (identity impersonation, authentication bypass)*
 
-### Tampering Threats  
-*List and describe tampering-related threats*
+### Tampering Threats
+*List and describe tampering-related threats (data/code modification)*
 
 ### Repudiation Threats
-*List and describe repudiation-related threats*
+*List and describe repudiation-related threats (insufficient logging, accountability gaps)*
 
 ### Information Disclosure Threats
-*List and describe information disclosure threats*
+*List and describe information disclosure threats (unauthorized data access, privacy violations)*
 
 ### Denial of Service Threats
-*List and describe denial of service threats*
+*List and describe denial of service threats (resource exhaustion, availability attacks)*
 
 ### Elevation of Privilege Threats
-*List and describe privilege escalation threats*
+*List and describe privilege escalation threats (authorization bypass, access control violations)*
 
-## Risk Assessment
+"""
+
+    if 'risk_scores' in include_sections:
+        report += """## Risk Assessment
+
 *Provide DREAD scores and risk prioritization for identified threats.*
 
-## Recommended Mitigations
-*Detail specific mitigation strategies organized by priority.*
+### Critical Priority Threats (DREAD: 40-50)
+*Threats requiring immediate action*
+
+### High Priority Threats (DREAD: 30-39)
+*Threats requiring prompt remediation*
+
+### Medium Priority Threats (DREAD: 20-29)
+*Threats for near-term planning*
+
+### Low Priority Threats (DREAD: 5-19)
+*Threats for long-term consideration*
+
+"""
+
+    if 'mitigations' in include_sections:
+        report += """## Recommended Mitigations
+
+*Detail specific mitigation strategies organized by priority. For each mitigation:*
+- Control type (Preventive/Detective/Corrective)
+- Implementation difficulty (Easy/Medium/Hard)
+- Priority level
+- Specific implementation guidance
 
 ### High Priority Mitigations
 *Critical security controls for immediate implementation*
 
-### Medium Priority Mitigations  
+### Medium Priority Mitigations
 *Important controls for near-term planning*
 
 ### Low Priority Mitigations
 *Additional defensive measures for comprehensive security*
 
-## Security Testing Plan
-*Outline test cases to validate mitigation effectiveness.*
+"""
+
+    report += """## Security Testing Plan
+
+*Outline test cases to validate mitigation effectiveness. Include:*
+- Test scenarios for each major threat
+- Acceptance criteria
+- Testing methodology (unit, integration, penetration)
 
 ## Implementation Roadmap
-*Provide timeline and sequencing for mitigation implementation.*
+
+*Provide timeline and sequencing for mitigation implementation:*
+- Phase 1 (0-30 days): Critical mitigations
+- Phase 2 (30-90 days): High-priority mitigations
+- Phase 3 (90+ days): Medium and low-priority mitigations
 
 ## Appendix
-*Additional technical details, references, and supporting information.*
-"""
-    
-    return {
-        "report_template": report_template,
-        "threat_model": threat_model,
-        "include_sections": include_sections,
-        "analysis_guidance": "Use this template to create a comprehensive threat modeling report. Populate each section with specific analysis based on the provided threat model data."
-    }
+
+### Threat Model Data
+*Technical details about the threat model*
+
+**Total Threats Identified:** {threat_count}
+
+### STRIDE Coverage
+*Breakdown of threats by STRIDE category*
+
+### References
+*Standards, frameworks, and resources referenced*
+- STRIDE Threat Modeling Methodology
+- DREAD Risk Assessment Framework
+- OWASP Top 10
+- CWE/SANS Top 25
+
+---
+
+**Report Generated:** [Date]
+**Threat Modeling Framework:** STRIDE
+**Risk Scoring Method:** DREAD
+
+*This report was generated using the STRIDE GPT MCP Server threat modeling framework. The LLM client should populate each section with specific analysis based on the provided threat model data.*
+""".format(threat_count=len(threat_model) if isinstance(threat_model, list) else 0)
+
+    return report
 
 def validate_threat_coverage(args: Dict[str, Any]) -> Dict[str, Any]:
     """Provide coverage validation framework for LLM client analysis."""
@@ -720,6 +1087,67 @@ def get_repository_analysis_guide(args: Dict[str, Any]) -> Dict[str, Any]:
         }
     }
 
+    # GitHub MCP integration examples
+    base_framework["github_mcp_integration"] = {
+        "description": "Example tool calls when using GitHub MCP server for repository analysis",
+        "initial_stage_examples": [
+            {
+                "tool": "mcp__github__get_file_contents",
+                "params_example": '{"owner": "org", "repo": "repo", "path": "README.md"}',
+                "purpose": "Understand application purpose and high-level architecture"
+            },
+            {
+                "tool": "mcp__github__get_file_contents",
+                "params_example": '{"owner": "org", "repo": "repo", "path": "package.json"}',
+                "purpose": "Identify Node.js technology stack and dependencies"
+            },
+            {
+                "tool": "mcp__github__get_file_contents",
+                "params_example": '{"owner": "org", "repo": "repo", "path": "requirements.txt"}',
+                "purpose": "Identify Python technology stack and dependencies"
+            },
+            {
+                "tool": "mcp__github__get_file_contents",
+                "params_example": '{"owner": "org", "repo": "repo", "path": "docker-compose.yml"}',
+                "purpose": "Understand deployment architecture and service composition"
+            }
+        ],
+        "deep_dive_examples": [
+            {
+                "tool": "mcp__github__search_code",
+                "params_example": '{"query": "authentication OR auth OR jwt language:python repo:org/repo"}',
+                "purpose": "Locate authentication implementation patterns"
+            },
+            {
+                "tool": "mcp__github__search_code",
+                "params_example": '{"query": "database OR db OR model language:python repo:org/repo"}',
+                "purpose": "Identify data models and persistence mechanisms"
+            },
+            {
+                "tool": "mcp__github__get_file_contents",
+                "params_example": '{"owner": "org", "repo": "repo", "path": ".env.example"}',
+                "purpose": "Understand configuration requirements and secrets management"
+            },
+            {
+                "tool": "mcp__github__list_workflows",
+                "params_example": '{"owner": "org", "repo": "repo"}',
+                "purpose": "Understand CI/CD pipelines and deployment processes"
+            },
+            {
+                "tool": "mcp__github__get_file_contents",
+                "params_example": '{"owner": "org", "repo": "repo", "path": "src/middleware/auth.js"}',
+                "purpose": "Examine authentication/authorization middleware implementation"
+            }
+        ],
+        "search_patterns": {
+            "authentication": 'repo:owner/repo "jwt" OR "passport" OR "session" OR "auth"',
+            "authorization": 'repo:owner/repo "permission" OR "role" OR "access control" OR "authorize"',
+            "sensitive_data": 'repo:owner/repo "password" OR "secret" OR "api_key" OR "credit_card"',
+            "input_validation": 'repo:owner/repo "validate" OR "sanitize" OR "escape" language:javascript',
+            "database_queries": 'repo:owner/repo "SELECT" OR "INSERT" OR "UPDATE" OR "query"'
+        }
+    }
+
     # Stage-specific analysis guidance
     if analysis_stage == "initial":
         guidance = """INITIAL RECONNAISSANCE STAGE:
@@ -732,6 +1160,27 @@ def get_repository_analysis_guide(args: Dict[str, Any]) -> Dict[str, Any]:
 Goal: Quickly build a mental model of what the application is, how it's built, and where it runs.
 
 Next Steps: Call this tool again with analysis_stage='deep_dive' once you have basic architecture understanding."""
+
+        base_framework["next_steps"] = {
+            "after_initial_analysis": [
+                "If you have identified: app type, tech stack, deployment model, authentication",
+                "→ Proceed to call this tool again with analysis_stage='deep_dive'",
+                "",
+                "If missing: basic architecture understanding",
+                "→ Review more documentation files and package managers"
+            ],
+            "readiness_checklist": [
+                "Can you identify the application type? (Web, API, Mobile, etc.)",
+                "Do you know the primary technology stack?",
+                "Is the deployment model clear? (Cloud, containers, serverless, etc.)",
+                "Have you identified major system components?"
+            ],
+            "github_mcp_tips": [
+                "Use mcp__github__get_file_contents for specific files like README.md, package.json",
+                "Start with documentation and configuration files",
+                "Look for docker-compose.yml, package.json, requirements.txt"
+            ]
+        }
 
     elif analysis_stage == "deep_dive":
         guidance = """DEEP DIVE ANALYSIS STAGE:
@@ -747,6 +1196,29 @@ Use the technology-specific guides provided to focus your analysis on the most r
 Goal: Extract detailed security context needed for comprehensive threat modeling.
 
 Next Steps: Call this tool again with analysis_stage='validation' to verify you have sufficient information."""
+
+        base_framework["next_steps"] = {
+            "after_deep_dive": [
+                "If you have identified: trust boundaries, data flows, sensitive data, access controls",
+                "→ Proceed to call this tool again with analysis_stage='validation'",
+                "",
+                "If missing: security context details",
+                "→ Search for authentication, authorization, and data model code"
+            ],
+            "readiness_checklist": [
+                "Have you mapped external API entry points?",
+                "Do you understand authentication mechanisms?",
+                "Have you identified sensitive data types?",
+                "Are trust boundaries clear?",
+                "Do you know which external services are integrated?"
+            ],
+            "github_mcp_tips": [
+                "Use mcp__github__search_code to find auth patterns: 'authentication OR jwt'",
+                "Look for models/ or schemas/ directories with mcp__github__get_file_contents",
+                "Search for middleware/ or decorators/ to find access control",
+                "Use mcp__github__list_workflows to understand CI/CD security"
+            ]
+        }
 
     elif analysis_stage == "validation":
         guidance = """VALIDATION STAGE:
@@ -765,6 +1237,27 @@ If validation fails:
 - Focus on the specific areas that are incomplete
 
 Goal: Confirm readiness for threat modeling or identify gaps to fill."""
+
+        base_framework["next_steps"] = {
+            "if_validation_passes": [
+                "1. Synthesize your findings into the output_template format",
+                "2. Call get_stride_threat_framework with your extracted data",
+                "3. Begin systematic STRIDE threat identification"
+            ],
+            "if_validation_fails": [
+                "1. Identify specific gaps from the validation_checklist",
+                "2. Return to get_repository_analysis_guide with analysis_stage='deep_dive'",
+                "3. Focus GitHub MCP queries on missing information",
+                "4. Re-run validation when gaps are filled"
+            ],
+            "minimum_required_for_stride": [
+                "app_description (2-4 sentences about architecture)",
+                "app_type (Web Application, API Service, etc.)",
+                "authentication_methods (at least one identified)",
+                "internet_facing (true/false)",
+                "sensitive_data_types (at least one identified)"
+            ]
+        }
 
     else:
         guidance = "Unknown analysis stage. Valid stages: 'initial', 'deep_dive', 'validation'"
