@@ -26,6 +26,7 @@ A serverless MCP (Model Context Protocol) HTTP server deployed on Vercel that pr
 - **Attack Trees**: Generate hierarchical attack trees with Mermaid diagram support
 - **Composable Architecture**: Designed to work seamlessly with other MCP servers (e.g., GitHub MCP)
 - **Mitigation Planning**: Generate actionable security mitigations with implementation guidance
+- **Repository Analysis Guide**: Systematic framework for extracting threat modeling inputs from code repositories with GitHub MCP integration
 - **Test Case Generation**: Create security test cases in multiple formats (Gherkin, Checklist, Markdown)
 - **Professional Reports**: Format complete threat models as executive-ready markdown reports
 - **Coverage Validation**: Analyze threat model completeness and suggest enhancements
@@ -110,10 +111,18 @@ For repository analysis, we recommend using the **official GitHub MCP server** a
 }
 ```
 
-**Recommended Workflow:**
-1. Use GitHub MCP server to analyze repository structure, files, and technologies
-2. Use STRIDE GPT to analyze threats for the identified application architecture
-3. Generate comprehensive threat model, risk scores, and mitigations
+**Enhanced Workflow with Repository Analysis Guide:**
+1. Use `get_repository_analysis_guide` to get systematic guidance on what to extract from repositories
+2. Use GitHub MCP server to analyze repository following the structured framework
+3. Use `get_repository_analysis_guide` validation stage to verify completeness
+4. Use STRIDE GPT threat modeling tools with structured extraction from repository
+5. Generate comprehensive threat model, risk scores, and mitigations
+
+The Repository Analysis Guide provides:
+- Stage-by-stage extraction framework (initial scan → deep dive → validation)
+- Technology-specific analysis patterns (Express, Django, FastAPI, etc.)
+- Trust boundary identification guidance
+- Output templates that map directly to threat modeling tool inputs
 
 **Links:**
 - [GitHub MCP Server](https://github.com/github/github-mcp-server)
@@ -173,6 +182,22 @@ STRIDE GPT MCP server is designed to work seamlessly with other specialized MCP 
 5. **Professional Output**: Executive-ready security reports and actionable recommendations
 
 ## Available Tools
+
+### Repository Analysis
+
+#### `get_repository_analysis_guide`
+**Description**: Get structured framework for extracting threat modeling inputs from repository analysis using GitHub MCP or similar tools
+
+**Inputs**:
+- `analysis_stage` (string, default: "initial"): Analysis stage - "initial" (quick scan), "deep_dive" (detailed security analysis), or "validation" (readiness check)
+- `repository_context` (object, optional): Repository context including:
+  - `primary_language` (string): Primary programming language detected
+  - `framework_detected` (string): Primary framework or platform detected
+  - `repository_type` (string): Type of repository - "application", "library", "infrastructure", or "unknown"
+
+**Output**: Comprehensive framework with stage-specific guidance, extraction patterns, technology-specific guides, validation checklists, and structured output templates
+
+**Use Case**: Bridges the gap between repository code analysis and threat modeling by providing systematic guidance on what security-relevant information to extract and how to structure it for effective threat modeling.
 
 ### Core Analysis Tools
 
@@ -269,45 +294,90 @@ STRIDE GPT MCP server is designed to work seamlessly with other specialized MCP 
 
 ### Repository-to-Threat-Model Workflow (with GitHub MCP)
 
-This example demonstrates the powerful combination of GitHub MCP + STRIDE GPT MCP servers:
+This example demonstrates the powerful combination of GitHub MCP + STRIDE GPT MCP servers with the new Repository Analysis Guide:
 
-**Step 1: Repository Analysis (GitHub MCP)**
+**Step 1: Get Initial Analysis Guidance**
+```json
+{
+  "tool": "get_repository_analysis_guide",
+  "arguments": {
+    "analysis_stage": "initial"
+  }
+}
 ```
-Use GitHub MCP to analyze repository:
-- Get file structure and identify key components
-- Read README.md, pyproject.toml, package.json for tech stack
-- Examine source code structure and dependencies
-- Identify authentication methods, data handling patterns
+*Returns: Framework with file patterns to examine, extraction guidance for tech stack, deployment model*
+
+**Step 2: Initial Repository Scan (GitHub MCP)**
+```
+Following the guidance, use GitHub MCP to read:
+- README.md, package.json, docker-compose.yml
+- Identify: Node.js/Express API with React frontend, PostgreSQL database
 ```
 
-**Step 2: Threat Modeling (STRIDE GPT MCP)**
+**Step 3: Get Deep Dive Guidance**
+```json
+{
+  "tool": "get_repository_analysis_guide",
+  "arguments": {
+    "analysis_stage": "deep_dive",
+    "repository_context": {
+      "primary_language": "javascript",
+      "framework_detected": "express",
+      "repository_type": "application"
+    }
+  }
+}
+```
+*Returns: Technology-specific guide for Express apps, trust boundary patterns, security-focused file locations*
+
+**Step 4: Detailed Security Analysis (GitHub MCP)**
+```
+Following technology-specific guidance, analyze:
+- src/routes/ - API endpoints
+- src/middleware/auth.js - JWT authentication
+- src/models/ - User and payment models
+- .env.example - Stripe integration, database config
+Extract: JWT auth, user/payment data, Stripe integration
+```
+
+**Step 5: Validate Readiness**
+```json
+{
+  "tool": "get_repository_analysis_guide",
+  "arguments": {
+    "analysis_stage": "validation"
+  }
+}
+```
+*Returns: Checklist to verify all required fields are ready for threat modeling*
+
+**Step 6: Generate Threat Model (STRIDE GPT MCP)**
 ```json
 {
   "tool": "get_stride_threat_framework",
   "arguments": {
-    "app_description": "FastAPI web framework - high-performance Python API framework with OAuth2/JWT support, dependency injection, automatic OpenAPI docs, built on Starlette/Pydantic. Handles routing, middleware, authentication, validation for internet-facing APIs.",
-    "app_type": "API Service", 
-    "authentication_methods": ["OAuth 2.0", "JWT tokens", "API Keys"],
+    "app_description": "E-commerce API with product catalog, shopping cart, and checkout. Uses React frontend, Node.js/Express backend, PostgreSQL database. Handles payment processing via Stripe. Deployed as Docker containers on AWS ECS.",
+    "app_type": "Web Application",
+    "authentication_methods": ["JWT"],
     "internet_facing": true,
-    "sensitive_data_types": ["User Data", "Authentication Tokens", "API Keys"]
+    "sensitive_data_types": ["PII", "Payment Cards", "Authentication Credentials"]
   }
 }
 ```
 
-**Step 3: Risk Assessment**
+**Step 7: Risk Assessment & Report**
 ```json
 {
   "tool": "calculate_threat_risk_scores",
   "arguments": {
-    "threats": [/* threats from step 2 */]
+    "threats": [/* threats from step 6 */]
   }
 }
 ```
 
-**Step 4: Generate Final Report**
 ```json
 {
-  "tool": "generate_threat_report", 
+  "tool": "generate_threat_report",
   "arguments": {
     "threat_model": [/* threats */],
     "mitigations": [/* mitigations */],
@@ -318,8 +388,20 @@ Use GitHub MCP to analyze repository:
 
 ### Complete Security Assessment Workflow
 
-1. **Generate Framework**: Use `get_stride_threat_framework` to get comprehensive threat modeling framework
-2. **Assess Risk**: Use `calculate_threat_risk_scores` with the threats from step 1
+**For Repository Analysis:**
+1. **Get Analysis Guide**: Use `get_repository_analysis_guide` (stage: initial) to understand what files to examine
+2. **Initial Scan**: Use GitHub MCP to read key files following guidance
+3. **Deep Dive**: Use `get_repository_analysis_guide` (stage: deep_dive) for technology-specific security analysis
+4. **Detailed Analysis**: Use GitHub MCP to examine security-relevant code and configurations
+5. **Validate Readiness**: Use `get_repository_analysis_guide` (stage: validation) to verify completeness
+6. **Generate Threats**: Use `get_stride_threat_framework` with structured extraction from repository
+7. **Assess Risk**: Use `calculate_threat_risk_scores` to prioritize threats
+8. **Plan Mitigations**: Use `generate_threat_mitigations` for actionable security controls
+9. **Create Report**: Use `generate_threat_report` for executive-ready documentation
+
+**For Architecture Description:**
+1. **Generate Framework**: Use `get_stride_threat_framework` with known architecture details
+2. **Assess Risk**: Use `calculate_threat_risk_scores` with identified threats
 3. **Plan Mitigations**: Use `generate_threat_mitigations` with high-priority threats
 4. **Create Documentation**: Use `generate_threat_report` to generate final report
 
