@@ -66,3 +66,6 @@ local_*.json
 *.log
 logs/
 .vercel
+
+# GitHub Actions workflow (cannot be committed via GitHub App)
+.github/workflows/
