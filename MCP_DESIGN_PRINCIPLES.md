@@ -455,6 +455,6 @@ The goal is not to build mini-LLMs, but to build the **best possible information
 
 ## About This Guide
 
-This guide was developed while building the [STRIDE GPT MCP Server](https://github.com/mrwadams/stride-gpt), learning from both successes and mistakes in the implementation. The principles here reflect hard-won insights from beta testing and real-world usage.
+This guide was developed while building the [STRIDE GPT MCP Server](https://github.com/mrwadams/stride-gpt), learning from both successes and mistakes in the implementation. The principles here reflect hard-won insights from testing and real-world usage.
 
 For questions or discussions about MCP server design, feel free to open an issue in the STRIDE GPT repository or reach out to the community.

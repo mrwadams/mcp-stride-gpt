@@ -2,21 +2,17 @@
 
 A serverless MCP (Model Context Protocol) HTTP server deployed on Vercel that provides STRIDE threat modeling tools for comprehensive security analysis. This server exposes powerful threat modeling frameworks as standardized MCP tools that can be used by any MCP-compatible client.
 
-## 🚀 Latest Updates (Beta Testing)
+## 🚀 Key Features
 
-**Enhanced AI/ML Threat Coverage** - Based on beta tester feedback, I've significantly enhanced the server's ability to handle AI/ML security threats:
+**Comprehensive AI/ML Security Coverage** - STRIDE GPT includes extensive coverage of modern AI/ML security threats:
 
 - ✅ **Complete OWASP LLM Top 10 (2025) Integration** - All 10 LLM vulnerabilities mapped to STRIDE categories
 - ✅ **AI/ML-Specific Threat Frameworks** - Comprehensive coverage of prompt injection, model poisoning, excessive agency, and more
-- ✅ **Rich Framework Data** - Tools now return detailed threat modeling information instead of placeholders
+- ✅ **Rich Framework Data** - Detailed threat modeling frameworks that enable deep security analysis
 - ✅ **Enhanced Architecture Analysis** - Identifies AI/ML components (RAG systems, vector databases, model serving)
 - ✅ **AI/ML Trust Boundaries** - Human-AI interfaces, model-data boundaries, training-inference boundaries
 - ✅ **Specialized Attack Vectors** - AI input attacks, model manipulation, training pipeline compromise
 - ✅ **AI/ML-Specific Mitigations** - OWASP LLM vulnerability mitigations and AI safety controls
-
-🔄 **For Beta Testers**: 
-- Please reload the MCP server / restart your MCP client to ensure you're using the updated frameworks
-- **Important**: The repository has been standardized to use only the serverless Vercel deployment. Local MCP server files have been removed to prevent deployment confusion and ensure consistent behavior across all users.
 
 ## Features
 
