@@ -421,6 +421,25 @@ vercel --prod
 ```
 
 **Testing:**
+```bash
+# Install test dependencies
+pip install -r requirements-dev.txt
+
+# Run all tests
+pytest
+
+# Run tests with coverage
+pytest --cov=api --cov-report=term-missing
+
+# Run specific test categories
+pytest -m unit          # Unit tests only
+pytest -m integration   # Integration tests only
+pytest -m smoke         # Smoke tests only
+```
+
+See [Test Documentation](tests/README.md) for detailed testing information.
+
+**Manual Testing:**
 - Test via MCP client configuration pointing to local dev server
 - Deploy to Vercel for production testing
 - Validate MCP JSON-RPC responses using curl or HTTP clients

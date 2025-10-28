@@ -50,10 +50,11 @@ htmlcov/
 .tox/
 
 # Temporary files
-test_*.py
-*_test.py
-debug_*.py
-temp_*.py
+# Note: Allow test files in tests/ directory
+/**/test_*.py
+!tests/test_*.py
+/**/debug_*.py
+/**/temp_*.py
 
 # Local configuration
 local_*.json
