@@ -48,8 +48,10 @@ Thumbs.db
 .coverage
 htmlcov/
 .tox/
+coverage.xml
 
-# Temporary files
+# Temporary files (exclude organized test files in tests/ directory)
+!tests/test_*.py
 test_*.py
 *_test.py
 debug_*.py
