@@ -185,27 +185,35 @@ class TestRequestValidation:
 
     def test_missing_method_field(self):
         """Test handling of missing method field."""
-        # This would normally be caught by HTTP handler, but we can test
-        # that handle_mcp_request handles it gracefully
+        # Missing 'method' field should return Method not found error
         request = {
             'jsonrpc': '2.0',
             'id': 1
         }
         response = handle_mcp_request(request)
 
-        # Should return an error
-        assert 'error' in response or 'result' in response
+        # Should return an error (not success)
+        assert 'error' in response
+        assert 'result' not in response
+        assert response['error']['code'] == -32601  # Method not found
+        assert response['id'] == 1
 
     def test_missing_jsonrpc_field(self):
-        """Test handling of missing jsonrpc field."""
+        """Test handling of missing jsonrpc field in request."""
+        # MCP handler is lenient and processes requests even without jsonrpc field
+        # but always includes it in the response per JSON-RPC 2.0 spec
         request = {
             'method': 'initialize',
             'id': 1
         }
         response = handle_mcp_request(request)
 
-        # Response should still be valid
+        # Response must always include jsonrpc field (per JSON-RPC 2.0 spec)
         assert 'jsonrpc' in response
+        assert response['jsonrpc'] == '2.0'
+        # Should still process the request successfully
+        assert 'result' in response
+        assert response['id'] == 1
 
 
 class TestCompleteWorkflow:

@@ -138,23 +138,43 @@ class TestGenerateThreatMitigations:
         assert 'Hard' in framework['difficulty_levels']
 
     def test_priority_filter(self):
-        """Test priority filter is respected."""
+        """Test priority filter parameter is captured for LLM context."""
+        # These parameters are passed through to provide context to the LLM client
+        # The MCP server itself doesn't filter - it provides framework for LLM to use
         args = {
             'threats': [],
             'priority_filter': 'high'
         }
         result = generate_threat_mitigations(args)
+
+        # Verify parameter is captured in output for LLM context
         assert result['priority_filter'] == 'high'
 
+        # Verify framework includes priority level definitions
+        assert 'priority_levels' in result['mitigation_framework']
+        assert 'High' in result['mitigation_framework']['priority_levels']
+
+        # Test default value
+        result_default = generate_threat_mitigations({'threats': []})
+        assert result_default['priority_filter'] == 'all'
+
     def test_threat_context_preservation(self):
-        """Test that threat context is preserved."""
+        """Test that threat context is preserved and properly structured."""
         threats = [
-            {'id': 'T1', 'category': 'S', 'description': 'Test threat'}
+            {'id': 'T1', 'category': 'S', 'description': 'Test threat'},
+            {'id': 'T2', 'category': 'T', 'description': 'Another threat'}
         ]
         args = {'threats': threats}
         result = generate_threat_mitigations(args)
 
+        # Verify threats are preserved exactly
         assert result['threat_context'] == threats
+        assert len(result['threat_context']) == 2
+        assert result['threat_context'][0]['id'] == 'T1'
+
+        # Test with empty threats
+        result_empty = generate_threat_mitigations({'threats': []})
+        assert result_empty['threat_context'] == []
 
 
 class TestCalculateThreatRiskScores:
@@ -205,14 +225,38 @@ class TestCalculateThreatRiskScores:
         assert 'discoverability' in calibration
 
     def test_scoring_examples(self):
-        """Test that scoring examples are provided."""
+        """Test that scoring examples are comprehensive and well-structured."""
         args = {'threats': []}
         result = calculate_threat_risk_scores(args)
 
         examples = result['scoring_examples']
-        assert len(examples) > 0
-        assert 'threat' in examples[0]
-        assert 'dread_breakdown' in examples[0]
+
+        # Should have multiple examples (at least 5 per test_improvements.py)
+        assert len(examples) >= 5, f"Expected at least 5 examples, got {len(examples)}"
+
+        # Verify each example has required structure
+        for i, example in enumerate(examples):
+            assert 'threat' in example, f"Example {i} missing 'threat' field"
+            assert 'context' in example, f"Example {i} missing 'context' field"
+            assert 'dread_breakdown' in example, f"Example {i} missing 'dread_breakdown'"
+
+            # Verify threat description is non-empty
+            assert len(example['threat']) > 0, f"Example {i} has empty threat"
+
+            # Verify DREAD breakdown has all required fields
+            dread = example['dread_breakdown']
+            required_fields = ['Damage', 'Reproducibility', 'Exploitability', 'Affected_Users', 'Discoverability']
+            for field in required_fields:
+                assert field in dread, f"Example {i} missing DREAD field: {field}"
+                assert dread[field] is not None, f"Example {i} has null {field}"
+
+            # Verify total and priority are present
+            assert 'total' in dread, f"Example {i} missing 'total' score"
+            assert 'priority' in dread, f"Example {i} missing 'priority'"
+
+            # Verify total score is reasonable (DREAD scores are 1-10 per dimension, 5 dimensions)
+            assert isinstance(dread['total'], (int, float)), f"Example {i} total is not numeric"
+            assert 5 <= dread['total'] <= 50, f"Example {i} total {dread['total']} out of valid range (5-50)"
 
 
 class TestCreateThreatAttackTrees:
@@ -250,16 +294,39 @@ class TestCreateThreatAttackTrees:
         assert 'both' in formats
 
     def test_max_depth_parameter(self):
-        """Test max_depth parameter is respected."""
+        """Test max_depth parameter is captured and validated."""
+        # Test custom depth
         args = {'threats': [], 'max_depth': 5}
         result = create_threat_attack_trees(args)
         assert result['max_depth'] == 5
 
+        # Test default depth
+        result_default = create_threat_attack_trees({'threats': []})
+        assert result_default['max_depth'] == 3  # Default value
+
+        # Verify framework guidance references depth concept
+        assert 'structure' in result['attack_tree_framework']
+
     def test_output_format_parameter(self):
-        """Test output_format parameter is respected."""
+        """Test output_format parameter validation and documentation."""
+        # Test mermaid format
         args = {'threats': [], 'output_format': 'mermaid'}
         result = create_threat_attack_trees(args)
         assert result['output_format'] == 'mermaid'
+
+        # Test default format
+        result_default = create_threat_attack_trees({'threats': []})
+        assert result_default['output_format'] == 'both'  # Default value
+
+        # Verify all output formats are documented
+        assert 'output_formats' in result
+        assert 'mermaid' in result['output_formats']
+        assert 'text' in result['output_formats']
+        assert 'json' in result['output_formats']
+        assert 'both' in result['output_formats']
+
+        # Verify format documentation includes examples
+        assert 'example' in result['output_formats']['mermaid']
 
 
 class TestGenerateSecurityTests:
@@ -306,15 +373,30 @@ class TestGenerateSecurityTests:
         assert 'markdown' in examples
 
     def test_parameters(self):
-        """Test that parameters are respected."""
+        """Test that parameters are captured and documented."""
         args = {
             'threats': [],
             'test_type': 'unit',
             'format_type': 'checklist'
         }
         result = generate_security_tests(args)
+
+        # Verify parameters are captured for LLM context
         assert result['test_type'] == 'unit'
         assert result['format_type'] == 'checklist'
+
+        # Test defaults
+        result_default = generate_security_tests({'threats': []})
+        assert result_default['test_type'] == 'mixed'  # Default from implementation
+        assert result_default['format_type'] == 'gherkin'
+
+        # Verify test types are properly documented in framework
+        assert 'test_types' in result['security_testing_framework']
+        assert 'unit' in result['security_testing_framework']['test_types']
+
+        # Verify format types are documented
+        assert 'test_formats' in result['security_testing_framework']
+        assert 'checklist' in result['security_testing_framework']['test_formats']
 
 
 class TestGenerateThreatReport:
@@ -490,12 +572,21 @@ class TestGetRepositoryAnalysisGuide:
         assert 'deep_dive_examples' in result['github_mcp_integration']
 
     def test_repository_context(self):
-        """Test that repository context is preserved."""
+        """Test that repository context is preserved and structured."""
         context = {
             'primary_language': 'Python',
-            'framework_detected': 'FastAPI'
+            'framework_detected': 'FastAPI',
+            'dependencies': ['pydantic', 'uvicorn']
         }
         args = {'repository_context': context}
         result = get_repository_analysis_guide(args)
 
+        # Verify context is preserved exactly
         assert result['repository_context'] == context
+        assert result['repository_context']['primary_language'] == 'Python'
+        assert result['repository_context']['framework_detected'] == 'FastAPI'
+
+        # Test with empty context
+        result_empty = get_repository_analysis_guide({})
+        assert 'repository_context' in result_empty
+        assert result_empty['repository_context'] == {}
