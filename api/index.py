@@ -1343,7 +1343,7 @@ def handle_mcp_request(body: dict) -> dict:
                             "type": "array",
                             "items": {
                                 "type": "object",
-                                "additionalProperties": true
+                                "additionalProperties": True
                             },
                             "description": "Array of threat objects"
                         },
@@ -1366,7 +1366,7 @@ def handle_mcp_request(body: dict) -> dict:
                             "type": "array",
                             "items": {
                                 "type": "object",
-                                "additionalProperties": true
+                                "additionalProperties": True
                             },
                             "description": "Array of threat objects (used for context)"
                         },
@@ -1394,13 +1394,13 @@ def handle_mcp_request(body: dict) -> dict:
                             "type": "array",
                             "items": {
                                 "type": "object",
-                                "additionalProperties": true
+                                "additionalProperties": True
                             },
                             "description": "Array of threat objects"
                         },
                         "scoring_guidance": {
                             "type": "object",
-                            "additionalProperties": true,
+                            "additionalProperties": True,
                             "description": "Optional guidance for scoring adjustments"
                         }
                     },
@@ -1417,7 +1417,7 @@ def handle_mcp_request(body: dict) -> dict:
                             "type": "array",
                             "items": {
                                 "type": "object",
-                                "additionalProperties": true
+                                "additionalProperties": True
                             },
                             "description": "Array of threat objects"
                         },
@@ -1445,7 +1445,7 @@ def handle_mcp_request(body: dict) -> dict:
                             "type": "array",
                             "items": {
                                 "type": "object",
-                                "additionalProperties": true
+                                "additionalProperties": True
                             },
                             "description": "Array of threat objects"
                         },
@@ -1453,7 +1453,7 @@ def handle_mcp_request(body: dict) -> dict:
                             "type": "array",
                             "items": {
                                 "type": "object",
-                                "additionalProperties": true
+                                "additionalProperties": True
                             },
                             "description": "Optional array of mitigation strategies"
                         },
@@ -1461,7 +1461,7 @@ def handle_mcp_request(body: dict) -> dict:
                             "type": "array",
                             "items": {
                                 "type": "object",
-                                "additionalProperties": true
+                                "additionalProperties": True
                             },
                             "description": "Optional array of DREAD scores"
                         },
@@ -1469,7 +1469,7 @@ def handle_mcp_request(body: dict) -> dict:
                             "type": "array",
                             "items": {
                                 "type": "object",
-                                "additionalProperties": true
+                                "additionalProperties": True
                             },
                             "description": "Optional array of attack trees"
                         },
@@ -1493,13 +1493,13 @@ def handle_mcp_request(body: dict) -> dict:
                             "type": "array",
                             "items": {
                                 "type": "object",
-                                "additionalProperties": true
+                                "additionalProperties": True
                             },
                             "description": "Array of threat objects to validate"
                         },
                         "app_context": {
                             "type": "object",
-                            "additionalProperties": true,
+                            "additionalProperties": True,
                             "description": "Application context information"
                         }
                     },
