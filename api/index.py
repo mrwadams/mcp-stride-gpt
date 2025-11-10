@@ -769,12 +769,14 @@ def get_repository_analysis_guide(args: Dict[str, Any]) -> Dict[str, Any]:
             "stages": {
                 "initial": {
                     "objective": "Quick scan to understand tech stack, architecture, and deployment model",
-                    "target_files": "5-10 key files",
+                    "target_files": "3-5 key files",
+                    "focus": "High-level only",
                     "output": "Tech stack, deployment model, basic architecture"
                 },
                 "deep_dive": {
                     "objective": "Extract detailed security context for threat modeling",
-                    "target_files": "20-40 targeted files",
+                    "target_files": "10-15 targeted files/searches",
+                    "focus": "Security-critical components only",
                     "output": "Trust boundaries, sensitive data, access controls"
                 },
                 "validation": {
@@ -783,11 +785,77 @@ def get_repository_analysis_guide(args: Dict[str, Any]) -> Dict[str, Any]:
                     "output": "Readiness assessment or identified gaps"
                 }
             }
+        },
+        "context_management": {
+            "description": "Efficient analysis principles to preserve context for threat modeling",
+            "optimization_principles": [
+                "When in doubt, search instead of read",
+                "STOP after 3-5 file reads in initial stage - assess readiness",
+                "STOP after 8-12 searches/reads in deep_dive - assess readiness",
+                "Don't re-read files - reference previous reads by file path",
+                "Search returns snippets; full reads return entire files",
+                "Use file path references in threat descriptions, not code snippets"
+            ],
+            "stopping_checkpoints": {
+                "after_initial": "After 3-5 file reads, STOP and ask: Can I identify app type, tech stack, deployment model? If yes, proceed to deep_dive. If no, read 1-2 more specific files.",
+                "after_deep_dive": "After 8-12 searches/reads, STOP and ask: Can I populate the output_template fields? If yes, start threat modeling. If no, search for specific missing info only.",
+                "principle": "Don't read for completeness - read until you have enough. More files = wasted context."
+            },
+            "decision_guidance": {
+                "read_full_file_when": [
+                    "You need specific configuration values (.env.example, config files)",
+                    "File type is typically small (package.json, docker-compose.yml, README)",
+                    "You need the complete architecture overview"
+                ],
+                "use_search_when": [
+                    "Looking for patterns (authentication methods, authorization checks)",
+                    "Examining application code (controllers, services, middleware)",
+                    "File type is typically large (application logic, route handlers)",
+                    "You need to understand 'how' something works, not specific values"
+                ]
+            }
         }
     }
 
     # Stage-specific guidance
     if analysis_stage == "initial":
+        base_framework["prioritized_reading_strategy"] = {
+            "description": "File reading strategy based on information value and typical file sizes",
+            "read_these_files": {
+                "priority": "Read first - typically small with high information density",
+                "files": [
+                    "README.md - architecture overview",
+                    "package.json / requirements.txt / pom.xml - tech stack identification",
+                    "docker-compose.yml / Dockerfile - deployment model",
+                    ".env.example - integrations and required services"
+                ],
+                "characteristics": "Config and documentation files are usually small, contain specific values needed for threat modeling",
+                "method": "Use mcp__github__get_file_contents"
+            },
+            "search_instead_of_read": {
+                "priority": "Use code search to extract relevant snippets - avoid full reads",
+                "patterns": [
+                    "OpenAPI/Swagger specs - search for endpoint definitions",
+                    "Auth middleware - search for 'authenticate' OR 'jwt.verify' patterns",
+                    "Database models - search for 'model' OR 'schema' patterns",
+                    "Controllers/routes - search for specific endpoints or patterns"
+                ],
+                "characteristics": "Application code files are typically large; search gives you relevant snippets without full file content",
+                "method": "Use mcp__github__search_code with targeted queries"
+            },
+            "avoid_or_skip": {
+                "priority": "Never read these fully - always use search or skip entirely",
+                "files": [
+                    "Application code files (controllers, services, handlers) - search instead",
+                    "Database migrations - infer schema from models or search",
+                    "Test files - usually not needed for threat modeling",
+                    "Generated code / build artifacts - not relevant",
+                    "Large documentation files - search for specific sections if needed"
+                ],
+                "alternative": "Use mcp__github__search_code with specific keywords"
+            }
+        }
+
         base_framework["initial_reconnaissance"] = {
             "files_to_examine_first": {
                 "documentation": ["README.md", "ARCHITECTURE.md", "docs/architecture.*", "docs/design.*"],
@@ -1089,62 +1157,70 @@ def get_repository_analysis_guide(args: Dict[str, Any]) -> Dict[str, Any]:
 
     # GitHub MCP integration examples
     base_framework["github_mcp_integration"] = {
-        "description": "Example tool calls when using GitHub MCP server for repository analysis",
-        "initial_stage_examples": [
-            {
+        "description": "Optimized workflow using GitHub MCP server - prefer search over full file reads",
+        "initial_stage_workflow": {
+            "step_1": {
                 "tool": "mcp__github__get_file_contents",
                 "params_example": '{"owner": "org", "repo": "repo", "path": "README.md"}',
-                "purpose": "Understand application purpose and high-level architecture"
+                "purpose": "Architecture overview",
+                "rationale": "README files contain structured overview; worth reading in full"
             },
-            {
+            "step_2": {
                 "tool": "mcp__github__get_file_contents",
                 "params_example": '{"owner": "org", "repo": "repo", "path": "package.json"}',
-                "purpose": "Identify Node.js technology stack and dependencies"
+                "purpose": "Tech stack identification",
+                "rationale": "Package manifests are typically small config files"
             },
-            {
-                "tool": "mcp__github__get_file_contents",
-                "params_example": '{"owner": "org", "repo": "repo", "path": "requirements.txt"}',
-                "purpose": "Identify Python technology stack and dependencies"
-            },
-            {
+            "step_3": {
                 "tool": "mcp__github__get_file_contents",
                 "params_example": '{"owner": "org", "repo": "repo", "path": "docker-compose.yml"}',
-                "purpose": "Understand deployment architecture and service composition"
+                "purpose": "Deployment model",
+                "rationale": "Docker configs are small, contain specific deployment info"
+            },
+            "checkpoint": {
+                "action": "STOP - Can you identify: app type, tech stack, deployment model?",
+                "if_yes": "Proceed to deep_dive stage",
+                "if_no": "Read .env.example or one more config file, then proceed"
             }
-        ],
-        "deep_dive_examples": [
-            {
-                "tool": "mcp__github__search_code",
-                "params_example": '{"query": "authentication OR auth OR jwt language:python repo:org/repo"}',
-                "purpose": "Locate authentication implementation patterns"
+        },
+        "deep_dive_workflow": {
+            "prefer_search_for_patterns": {
+                "authentication": {
+                    "tool": "mcp__github__search_code",
+                    "query": 'repo:org/repo "passport.authenticate" OR "jwt.verify"',
+                    "rationale": "Search returns relevant auth code snippets without full middleware files"
+                },
+                "data_models": {
+                    "tool": "mcp__github__search_code",
+                    "query": 'repo:org/repo path:models/ OR path:schemas/',
+                    "rationale": "Search shows model structure without full file content"
+                },
+                "authorization": {
+                    "tool": "mcp__github__search_code",
+                    "query": 'repo:org/repo "@require" OR "@admin" OR "authorize"',
+                    "rationale": "Search finds authorization patterns across codebase"
+                }
             },
-            {
-                "tool": "mcp__github__search_code",
-                "params_example": '{"query": "database OR db OR model language:python repo:org/repo"}',
-                "purpose": "Identify data models and persistence mechanisms"
+            "read_for_specific_values": {
+                "configuration": {
+                    "tool": "mcp__github__get_file_contents",
+                    "path": ".env.example",
+                    "rationale": "Config files are small and contain specific integration details"
+                }
             },
-            {
-                "tool": "mcp__github__get_file_contents",
-                "params_example": '{"owner": "org", "repo": "repo", "path": ".env.example"}',
-                "purpose": "Understand configuration requirements and secrets management"
-            },
-            {
-                "tool": "mcp__github__list_workflows",
-                "params_example": '{"owner": "org", "repo": "repo"}',
-                "purpose": "Understand CI/CD pipelines and deployment processes"
-            },
-            {
-                "tool": "mcp__github__get_file_contents",
-                "params_example": '{"owner": "org", "repo": "repo", "path": "src/middleware/auth.js"}',
-                "purpose": "Examine authentication/authorization middleware implementation"
+            "checkpoint": {
+                "action": "STOP after 8-12 searches/reads - Can you populate output_template fields?",
+                "if_yes": "Start threat modeling with get_stride_threat_framework",
+                "if_no": "Do 1-2 targeted searches for specific missing info only"
             }
-        ],
+        },
         "search_patterns": {
-            "authentication": 'repo:owner/repo "jwt" OR "passport" OR "session" OR "auth"',
-            "authorization": 'repo:owner/repo "permission" OR "role" OR "access control" OR "authorize"',
-            "sensitive_data": 'repo:owner/repo "password" OR "secret" OR "api_key" OR "credit_card"',
-            "input_validation": 'repo:owner/repo "validate" OR "sanitize" OR "escape" language:javascript',
-            "database_queries": 'repo:owner/repo "SELECT" OR "INSERT" OR "UPDATE" OR "query"'
+            "authentication": 'repo:owner/repo "jwt.verify" OR "passport.authenticate" OR "auth.check"',
+            "authorization": 'repo:owner/repo "@require" OR "@admin" OR "permission.check" OR "authorize"',
+            "sensitive_data": 'repo:owner/repo path:models/ "password" OR "email" OR "ssn" OR "credit_card"',
+            "input_validation": 'repo:owner/repo "validate(" OR "sanitize(" OR "escape("',
+            "database_queries": 'repo:owner/repo "query(" OR "execute(" OR "SELECT" OR "INSERT"',
+            "api_endpoints": 'repo:owner/repo "app.get" OR "app.post" OR "@route" OR "@endpoint"'
         }
     }
 
@@ -1152,110 +1228,116 @@ def get_repository_analysis_guide(args: Dict[str, Any]) -> Dict[str, Any]:
     if analysis_stage == "initial":
         guidance = """INITIAL RECONNAISSANCE STAGE:
 
-1. Start with high-level documentation and configuration files to understand the system architecture
-2. Examine package managers to identify the technology stack and frameworks
-3. Check containerization and infrastructure files to determine deployment model
-4. Review configuration templates to understand required services and integrations
+1. Read 3-5 small, high-value files (README, package.json/requirements.txt, docker-compose.yml)
+2. STOP after 3-5 file reads - assess readiness to proceed
+3. Don't read for completeness - read until you have enough
 
-Goal: Quickly build a mental model of what the application is, how it's built, and where it runs.
+Goal: Quickly identify app type, tech stack, and deployment model with minimal context usage.
 
-Next Steps: Call this tool again with analysis_stage='deep_dive' once you have basic architecture understanding."""
+Stopping Checkpoint: After 3-5 files, ask yourself:
+- Can I identify the application type?
+- Do I know the tech stack?
+- Is the deployment model clear?
+
+If YES → Proceed to deep_dive stage
+If NO → Read 1-2 more specific files, then proceed anyway"""
 
         base_framework["next_steps"] = {
             "after_initial_analysis": [
-                "If you have identified: app type, tech stack, deployment model, authentication",
-                "→ Proceed to call this tool again with analysis_stage='deep_dive'",
+                "STOP after 3-5 file reads",
+                "If you have: app type, tech stack, deployment model",
+                "→ Proceed to analysis_stage='deep_dive'",
                 "",
-                "If missing: basic architecture understanding",
-                "→ Review more documentation files and package managers"
+                "If missing critical info:",
+                "→ Read 1-2 more targeted files, then proceed to deep_dive"
             ],
-            "readiness_checklist": [
-                "Can you identify the application type? (Web, API, Mobile, etc.)",
-                "Do you know the primary technology stack?",
-                "Is the deployment model clear? (Cloud, containers, serverless, etc.)",
-                "Have you identified major system components?"
+            "stopping_checkpoint": [
+                "After 3-5 file reads, STOP and assess",
+                "Don't read more files for completeness",
+                "Move to deep_dive even if some details are unclear"
             ],
             "github_mcp_tips": [
-                "Use mcp__github__get_file_contents for specific files like README.md, package.json",
-                "Start with documentation and configuration files",
-                "Look for docker-compose.yml, package.json, requirements.txt"
+                "Use mcp__github__get_file_contents for README.md, package.json/requirements.txt, docker-compose.yml",
+                "Config and documentation files are typically small; safe to read in full",
+                "STOP after 3-5 files - don't keep reading"
             ]
         }
 
     elif analysis_stage == "deep_dive":
         guidance = """DEEP DIVE ANALYSIS STAGE:
 
-1. Focus on security-relevant code: authentication, authorization, data models
-2. Identify trust boundaries by tracing request flows from external entry points
-3. Examine data models and schemas to catalogue sensitive data types
-4. Analyze access control patterns and privilege escalation paths
-5. Map external dependencies and third-party integrations
+1. Use code SEARCH (not file reads) to find security patterns:
+   - Search for authentication patterns (jwt.verify, passport.authenticate)
+   - Search for data models (path:models/, path:schemas/)
+   - Search for authorization patterns (@require, @admin, authorize)
 
-Use the technology-specific guides provided to focus your analysis on the most relevant files for the detected stack.
+2. Only read full files for configs (.env.example) - search application code instead
 
-Goal: Extract detailed security context needed for comprehensive threat modeling.
+3. STOP after 8-12 searches/reads and assess readiness
 
-Next Steps: Call this tool again with analysis_stage='validation' to verify you have sufficient information."""
+Goal: Extract security context using targeted searches, not exhaustive file reading.
+
+Stopping Checkpoint: After 8-12 searches/reads, ask yourself:
+- Can I populate the output_template fields (auth methods, sensitive data, etc.)?
+- Do I know enough about trust boundaries?
+
+If YES → Proceed to validation stage
+If NO → Do 1-2 targeted searches for specific missing info, then proceed anyway"""
 
         base_framework["next_steps"] = {
             "after_deep_dive": [
-                "If you have identified: trust boundaries, data flows, sensitive data, access controls",
-                "→ Proceed to call this tool again with analysis_stage='validation'",
+                "STOP after 8-12 searches/reads",
+                "If you can populate output_template fields:",
+                "→ Proceed to analysis_stage='validation'",
                 "",
-                "If missing: security context details",
-                "→ Search for authentication, authorization, and data model code"
+                "If missing specific details:",
+                "→ Do 1-2 targeted searches, then proceed to validation"
             ],
-            "readiness_checklist": [
-                "Have you mapped external API entry points?",
-                "Do you understand authentication mechanisms?",
-                "Have you identified sensitive data types?",
-                "Are trust boundaries clear?",
-                "Do you know which external services are integrated?"
+            "stopping_checkpoint": [
+                "After 8-12 searches/reads, STOP and assess",
+                "Don't search for completeness - search until you have enough",
+                "Move to validation even if some details are unclear"
             ],
             "github_mcp_tips": [
-                "Use mcp__github__search_code to find auth patterns: 'authentication OR jwt'",
-                "Look for models/ or schemas/ directories with mcp__github__get_file_contents",
-                "Search for middleware/ or decorators/ to find access control",
-                "Use mcp__github__list_workflows to understand CI/CD security"
+                "PREFER mcp__github__search_code over mcp__github__get_file_contents",
+                "Search examples: 'repo:org/repo \"jwt.verify\" OR \"passport.authenticate\"'",
+                "Search returns relevant snippets; full reads return entire files",
+                "Only read full files for config/documentation; search application code"
             ]
         }
 
     elif analysis_stage == "validation":
         guidance = """VALIDATION STAGE:
 
-1. Review the validation checklist to ensure all required context has been extracted
-2. Verify you can populate all required fields for get_stride_threat_framework
-3. Check quality indicators to assess completeness
+Check if you can populate the minimum required fields for threat modeling:
+- app_description (2-4 sentences)
+- app_type
+- authentication_methods (at least one)
+- internet_facing (true/false)
+- sensitive_data_types (at least one)
 
-If validation passes:
-- Proceed to call get_stride_threat_framework with your structured extraction
-- Use the output_template provided as a guide for formatting your input
+If YES → Call get_stride_threat_framework and start threat modeling
+If NO → Do 1-2 targeted searches for missing info, then start threat modeling anyway
 
-If validation fails:
-- Identify specific gaps from the checklist
-- Return to deep_dive analysis for missing information
-- Focus on the specific areas that are incomplete
-
-Goal: Confirm readiness for threat modeling or identify gaps to fill."""
+Don't aim for perfect information - aim for sufficient information to identify threats."""
 
         base_framework["next_steps"] = {
             "if_validation_passes": [
-                "1. Synthesize your findings into the output_template format",
-                "2. Call get_stride_threat_framework with your extracted data",
-                "3. Begin systematic STRIDE threat identification"
+                "1. Format your findings using the output_template",
+                "2. Call get_stride_threat_framework with extracted data",
+                "3. Begin STRIDE threat identification"
             ],
             "if_validation_fails": [
-                "1. Identify specific gaps from the validation_checklist",
-                "2. Return to get_repository_analysis_guide with analysis_stage='deep_dive'",
-                "3. Focus GitHub MCP queries on missing information",
-                "4. Re-run validation when gaps are filled"
+                "1. Identify 1-2 specific missing pieces",
+                "2. Do targeted searches for those specific items only",
+                "3. Proceed to threat modeling even if gaps remain"
             ],
             "minimum_required_for_stride": [
-                "app_description (2-4 sentences about architecture)",
-                "app_type (Web Application, API Service, etc.)",
-                "authentication_methods (at least one identified)",
+                "app_description (2-4 sentences)",
+                "app_type (e.g., Web Application, API Service)",
+                "authentication_methods (at least one, or 'None/Public')",
                 "internet_facing (true/false)",
-                "sensitive_data_types (at least one identified)"
+                "sensitive_data_types (at least one, or 'User Data' as default)"
             ]
         }
 
