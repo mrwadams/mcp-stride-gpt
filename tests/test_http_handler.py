@@ -15,7 +15,7 @@ import json
 # Add api directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'api'))
 
-from index import handler, handle_mcp_request
+from index import handler, handle_mcp_request, validate_json_complexity, PAYLOAD_LIMITS
 
 
 class TestMCPIntegration:
@@ -311,3 +311,129 @@ class TestCompleteWorkflow:
         assert 'result' in report_response
         report = report_response['result']['content'][0]['text']
         assert '# STRIDE Threat Model Report' in report
+
+
+class TestPayloadValidation:
+    """Tests for payload size and complexity validation."""
+
+    def test_json_depth_validation_passes(self):
+        """Test that valid depth passes validation."""
+        data = {'level1': {'level2': {'level3': 'value'}}}
+        result = validate_json_complexity(data)
+        assert result['valid'] is True
+        assert result['error'] is None
+
+    def test_json_depth_validation_fails(self):
+        """Test that excessive depth fails validation."""
+        # Create deeply nested structure exceeding MAX_JSON_DEPTH (20)
+        # Build a structure programmatically to avoid brace-counting errors
+        data = {}
+        current = data
+        for i in range(1, 23):  # Create 22 levels of nesting
+            current[f'level{i}'] = {}
+            current = current[f'level{i}']
+        current['value'] = 'too deep'
+
+        result = validate_json_complexity(data)
+        assert result['valid'] is False
+        assert 'nesting depth' in result['error'].lower()
+
+    def test_object_keys_validation_passes(self):
+        """Test that object with valid number of keys passes."""
+        data = {f'key{i}': f'value{i}' for i in range(50)}
+        result = validate_json_complexity(data)
+        assert result['valid'] is True
+
+    def test_object_keys_validation_fails(self):
+        """Test that object with too many keys fails."""
+        # Create object exceeding MAX_OBJECT_KEYS (500)
+        data = {f'key{i}': f'value{i}' for i in range(600)}
+        result = validate_json_complexity(data)
+        assert result['valid'] is False
+        assert 'keys' in result['error'].lower()
+
+    def test_array_length_validation_passes(self):
+        """Test that array with valid length passes."""
+        data = [i for i in range(100)]
+        result = validate_json_complexity(data)
+        assert result['valid'] is True
+
+    def test_array_length_validation_fails(self):
+        """Test that array exceeding max length fails."""
+        # Create array exceeding MAX_ARRAY_LENGTH (2000)
+        data = [i for i in range(2500)]
+        result = validate_json_complexity(data)
+        assert result['valid'] is False
+        assert 'array length' in result['error'].lower()
+
+    def test_string_length_validation_passes(self):
+        """Test that valid string length passes."""
+        data = {'text': 'a' * 1000}
+        result = validate_json_complexity(data)
+        assert result['valid'] is True
+
+    def test_string_length_validation_fails(self):
+        """Test that excessive string length fails."""
+        # Create string exceeding MAX_STRING_LENGTH (500,000)
+        data = {'text': 'a' * 600000}
+        result = validate_json_complexity(data)
+        assert result['valid'] is False
+        assert 'string length' in result['error'].lower()
+
+    def test_nested_array_validation(self):
+        """Test validation with nested arrays."""
+        data = [[i for i in range(100)] for _ in range(10)]
+        result = validate_json_complexity(data)
+        assert result['valid'] is True
+
+    def test_mixed_nesting_validation(self):
+        """Test validation with mixed nesting of objects and arrays."""
+        data = {
+            'users': [
+                {'id': i, 'name': f'user{i}', 'data': {'score': i * 10}}
+                for i in range(50)
+            ]
+        }
+        result = validate_json_complexity(data)
+        assert result['valid'] is True
+
+    def test_complex_payload_passes(self):
+        """Test realistic complex payload that should pass."""
+        data = {
+            'jsonrpc': '2.0',
+            'method': 'tools/call',
+            'params': {
+                'name': 'generate_threat_mitigations',
+                'arguments': {
+                    'threats': [
+                        {
+                            'id': f'T{i}',
+                            'category': 'S',
+                            'description': 'A' * 500,
+                            'impact': 'High',
+                            'likelihood': 'Medium'
+                        }
+                        for i in range(100)
+                    ]
+                }
+            },
+            'id': 1
+        }
+        result = validate_json_complexity(data)
+        assert result['valid'] is True
+
+    def test_object_key_length_validation_fails(self):
+        """Test that excessively long object keys fail validation."""
+        # Create object with key exceeding MAX_STRING_LENGTH (500KB)
+        data = {'a' * 600000: 'value'}
+        result = validate_json_complexity(data)
+        assert result['valid'] is False
+        assert 'key length' in result['error'].lower()
+
+    def test_payload_limits_constants(self):
+        """Test that payload limit constants are defined correctly."""
+        assert PAYLOAD_LIMITS['MAX_PAYLOAD_SIZE'] == 5_242_880  # 5MB
+        assert PAYLOAD_LIMITS['MAX_JSON_DEPTH'] == 20
+        assert PAYLOAD_LIMITS['MAX_OBJECT_KEYS'] == 500
+        assert PAYLOAD_LIMITS['MAX_ARRAY_LENGTH'] == 2000
+        assert PAYLOAD_LIMITS['MAX_STRING_LENGTH'] == 500_000  # 500KB

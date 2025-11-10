@@ -15,11 +15,94 @@ import hashlib
 ERROR_CODES = {
     'INVALID_PARAMETER': -32603,
     'TOOL_EXECUTION_FAILED': -32604,
-    'INTERNAL_ERROR': -32603
+    'INTERNAL_ERROR': -32603,
+    'PAYLOAD_TOO_LARGE': -32600,
+    'PAYLOAD_TOO_COMPLEX': -32600
+}
+
+# Payload validation limits
+# These limits balance security (DoS prevention) with practical MCP usage
+PAYLOAD_LIMITS = {
+    'MAX_PAYLOAD_SIZE': 5_242_880,  # 5MB max payload size (increased for large threat models)
+    'MAX_JSON_DEPTH': 20,            # Maximum nesting depth (MCP protocol + nested threat data)
+    'MAX_OBJECT_KEYS': 500,          # Maximum keys in single object (rich threat metadata)
+    'MAX_ARRAY_LENGTH': 2000,        # Maximum array length (large-scale threat assessments)
+    'MAX_STRING_LENGTH': 500_000     # Maximum string length (500KB - detailed descriptions)
 }
 
 # Simplified tool implementations for Vercel deployment
 # Note: These provide framework and guidance for LLM client analysis
+
+def validate_json_complexity(data: Any, current_depth: int = 0) -> Dict[str, Any]:
+    """
+    Recursively validate JSON complexity to prevent DoS attacks.
+
+    Checks:
+    - Maximum nesting depth
+    - Maximum number of keys in objects
+    - Maximum array length
+    - Maximum string length
+
+    Returns:
+        Dict with 'valid' (bool) and 'error' (str) if invalid
+    """
+    # Check depth limit
+    if current_depth > PAYLOAD_LIMITS['MAX_JSON_DEPTH']:
+        return {
+            'valid': False,
+            'error': f"JSON nesting depth exceeds maximum of {PAYLOAD_LIMITS['MAX_JSON_DEPTH']}"
+        }
+
+    # Validate dictionaries/objects
+    if isinstance(data, dict):
+        # Check number of keys
+        if len(data) > PAYLOAD_LIMITS['MAX_OBJECT_KEYS']:
+            return {
+                'valid': False,
+                'error': f"Object contains {len(data)} keys, exceeds maximum of {PAYLOAD_LIMITS['MAX_OBJECT_KEYS']}"
+            }
+
+        # Recursively validate values
+        for key, value in data.items():
+            # Validate key length
+            if isinstance(key, str) and len(key) > PAYLOAD_LIMITS['MAX_STRING_LENGTH']:
+                return {
+                    'valid': False,
+                    'error': f"Object key length exceeds maximum of {PAYLOAD_LIMITS['MAX_STRING_LENGTH']}"
+                }
+
+            # Recursively validate value
+            result = validate_json_complexity(value, current_depth + 1)
+            if not result['valid']:
+                return result
+
+    # Validate arrays
+    elif isinstance(data, list):
+        # Check array length
+        if len(data) > PAYLOAD_LIMITS['MAX_ARRAY_LENGTH']:
+            return {
+                'valid': False,
+                'error': f"Array length {len(data)} exceeds maximum of {PAYLOAD_LIMITS['MAX_ARRAY_LENGTH']}"
+            }
+
+        # Recursively validate elements
+        for item in data:
+            result = validate_json_complexity(item, current_depth + 1)
+            if not result['valid']:
+                return result
+
+    # Validate strings
+    elif isinstance(data, str):
+        if len(data) > PAYLOAD_LIMITS['MAX_STRING_LENGTH']:
+            return {
+                'valid': False,
+                'error': f"String length {len(data)} exceeds maximum of {PAYLOAD_LIMITS['MAX_STRING_LENGTH']}"
+            }
+
+    # Other types (int, float, bool, None) are inherently safe
+
+    return {'valid': True, 'error': None}
+
 
 def get_stride_threat_framework(args: Dict[str, Any]) -> Dict[str, Any]:
     """Provide STRIDE threat modeling framework for LLM client analysis."""
@@ -1830,8 +1913,21 @@ class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
             content_length = int(self.headers.get('Content-Length', 0))
+
+            # Validate payload size before reading
+            if content_length > PAYLOAD_LIMITS['MAX_PAYLOAD_SIZE']:
+                self.send_error_response(413, {
+                    "jsonrpc": "2.0",
+                    "error": {
+                        "code": ERROR_CODES['PAYLOAD_TOO_LARGE'],
+                        "message": f"Payload size {content_length} bytes exceeds maximum of {PAYLOAD_LIMITS['MAX_PAYLOAD_SIZE']} bytes"
+                    },
+                    "id": None
+                })
+                return
+
             post_data = self.rfile.read(content_length)
-            
+
             try:
                 body = json.loads(post_data.decode('utf-8'))
             except json.JSONDecodeError:
@@ -1841,7 +1937,20 @@ class handler(BaseHTTPRequestHandler):
                     "id": None
                 })
                 return
-            
+
+            # Validate JSON complexity
+            complexity_result = validate_json_complexity(body)
+            if not complexity_result['valid']:
+                self.send_error_response(400, {
+                    "jsonrpc": "2.0",
+                    "error": {
+                        "code": ERROR_CODES['PAYLOAD_TOO_COMPLEX'],
+                        "message": f"Payload complexity validation failed: {complexity_result['error']}"
+                    },
+                    "id": body.get('id')
+                })
+                return
+
             # Validate JSON-RPC
             if not body.get('jsonrpc') == '2.0' or not body.get('method'):
                 self.send_error_response(400, {
