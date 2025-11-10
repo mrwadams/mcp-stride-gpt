@@ -15,7 +15,7 @@ import json
 # Add api directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'api'))
 
-from index import handler, handle_mcp_request, validate_json_complexity, PAYLOAD_LIMITS
+from index import handler, handle_mcp_request, validate_json_complexity, PAYLOAD_LIMITS, sanitize_error
 
 
 class TestMCPIntegration:
@@ -437,3 +437,170 @@ class TestPayloadValidation:
         assert PAYLOAD_LIMITS['MAX_OBJECT_KEYS'] == 500
         assert PAYLOAD_LIMITS['MAX_ARRAY_LENGTH'] == 2000
         assert PAYLOAD_LIMITS['MAX_STRING_LENGTH'] == 500_000  # 500KB
+
+
+class TestErrorSanitization:
+    """Tests for error message sanitization to prevent information disclosure."""
+
+    def test_sanitize_error_returns_generic_message(self):
+        """Test that sanitize_error returns a generic message, not the raw exception."""
+        try:
+            # Trigger an error that contains sensitive information
+            raise ValueError("Database connection failed at /internal/path/db.py line 42")
+        except Exception as e:
+            error_id, sanitized_message = sanitize_error(e, "test context")
+
+            # Should NOT contain sensitive details
+            assert "/internal/path" not in sanitized_message
+            assert "db.py" not in sanitized_message
+            assert "line 42" not in sanitized_message
+            assert "ValueError" not in sanitized_message
+
+            # Should contain generic message
+            assert "An internal error occurred" in sanitized_message
+            assert "Error ID:" in sanitized_message
+
+            # Error ID should be present and reasonably short (8 chars)
+            assert len(error_id) == 8
+
+    def test_sanitize_error_includes_error_id(self):
+        """Test that sanitized error includes a unique error ID for correlation."""
+        try:
+            raise RuntimeError("Internal server error with sensitive data")
+        except Exception as e:
+            error_id, sanitized_message = sanitize_error(e)
+
+            # Error ID should be in the message
+            assert error_id in sanitized_message
+            # Error ID should be UUID-like (8 hex characters)
+            assert len(error_id) == 8
+            # Should be hex characters
+            try:
+                int(error_id, 16)
+            except ValueError:
+                pytest.fail("Error ID should be hex string")
+
+    def test_sanitize_error_prevents_stack_trace_leakage(self):
+        """Test that stack traces are not included in sanitized message."""
+        def inner_function():
+            raise Exception("Error in inner_function at /app/core/module.py")
+
+        try:
+            inner_function()
+        except Exception as e:
+            error_id, sanitized_message = sanitize_error(e, "nested function call")
+
+            # Should NOT leak function names or file paths
+            assert "inner_function" not in sanitized_message
+            assert "/app/core/module.py" not in sanitized_message
+            assert "module.py" not in sanitized_message
+
+            # Should be generic
+            assert "An internal error occurred" in sanitized_message
+
+    def test_sanitize_error_prevents_exception_type_leakage(self):
+        """Test that specific exception types are not disclosed."""
+        exceptions_to_test = [
+            ValueError("Invalid configuration at config.yaml line 15"),
+            KeyError("API_SECRET_KEY not found in environment"),
+            FileNotFoundError("/etc/secrets/credentials.json not found"),
+            ImportError("Failed to import internal.proprietary.module"),
+            AttributeError("'DatabaseConnection' object has no attribute '_password'")
+        ]
+
+        for exc in exceptions_to_test:
+            try:
+                raise exc
+            except Exception as e:
+                error_id, sanitized_message = sanitize_error(e)
+
+                # Should NOT contain exception type
+                assert type(e).__name__ not in sanitized_message
+                # Should NOT contain original error message
+                assert str(e) not in sanitized_message
+                # Should be generic
+                assert "An internal error occurred" in sanitized_message
+
+    def test_tool_execution_error_sanitization(self):
+        """Test that tool execution errors are sanitized in MCP responses."""
+        # Create a custom broken tool to test error sanitization
+        import sys
+        import os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'api'))
+
+        # Temporarily replace one of the tool functions to throw an error
+        from index import handle_mcp_request
+        import index as index_module
+
+        # Save original function
+        original_function = index_module.get_stride_threat_framework
+
+        # Create a function that raises an error with sensitive information
+        def broken_function(args):
+            raise Exception("Database connection error at /internal/db/config.py line 127: password authentication failed")
+
+        try:
+            # Replace the function temporarily
+            index_module.get_stride_threat_framework = broken_function
+
+            # Make a request that will trigger the broken function
+            request = {
+                'jsonrpc': '2.0',
+                'method': 'tools/call',
+                'params': {
+                    'name': 'get_stride_threat_framework',
+                    'arguments': {
+                        'app_description': 'Test app'
+                    }
+                },
+                'id': 99
+            }
+
+            response = handle_mcp_request(request)
+
+            # Should be an error response
+            assert 'error' in response
+            error_message = response['error']['message']
+
+            # Should NOT contain sensitive details
+            assert '/internal/db/config.py' not in error_message
+            assert 'line 127' not in error_message
+            assert 'password authentication failed' not in error_message
+            assert 'Database connection error' not in error_message
+
+            # Should contain sanitized error
+            assert "An internal error occurred" in error_message
+            assert "Error ID:" in error_message
+
+        finally:
+            # Restore original function
+            index_module.get_stride_threat_framework = original_function
+
+    def test_error_id_uniqueness(self):
+        """Test that each error gets a unique error ID."""
+        error_ids = set()
+
+        # Generate multiple errors
+        for i in range(10):
+            try:
+                raise Exception(f"Test error {i}")
+            except Exception as e:
+                error_id, _ = sanitize_error(e)
+                error_ids.add(error_id)
+
+        # All error IDs should be unique
+        assert len(error_ids) == 10
+
+    def test_error_context_logged_not_exposed(self):
+        """Test that error context is logged but not exposed to client."""
+        # This test verifies the principle, actual log checking would require
+        # capturing stderr which is complex in unit tests
+        try:
+            raise ValueError("Sensitive operation failed")
+        except Exception as e:
+            error_id, sanitized_message = sanitize_error(e, "sensitive operation context")
+
+            # Context should NOT be in the sanitized message sent to client
+            assert "sensitive operation context" not in sanitized_message
+            # Only generic message should be present
+            assert "An internal error occurred" in sanitized_message

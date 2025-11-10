@@ -83,6 +83,52 @@ Each tool should:
 - Include detailed analysis guidance in responses
 - Support batch processing for efficiency
 
+## Security Controls
+
+The MCP server implements several security controls to protect against common attacks and information disclosure:
+
+### Error Message Sanitization
+
+**Purpose**: Prevent information disclosure through error messages (stack traces, file paths, internal details)
+
+**Implementation**: The `sanitize_error()` function in `api/index.py` (lines 37-65) provides:
+- Generic error messages for clients (no sensitive details)
+- Detailed error logging to server logs (stderr → Vercel logs)
+- Unique error IDs for correlating client reports with server logs
+- Protection against leaking: stack traces, file paths, exception types, internal implementation details
+
+**Usage**:
+```python
+try:
+    # Risky operation
+    result = process_user_input(data)
+except Exception as e:
+    error_id, sanitized_message = sanitize_error(e, "processing user input")
+    return {"error": {"message": sanitized_message}}
+```
+
+**Testing**: See `tests/test_http_handler.py::TestErrorSanitization` for comprehensive test coverage
+
+### Payload Validation
+
+**Purpose**: Prevent DoS attacks via oversized or complex payloads
+
+**Limits** (defined in `PAYLOAD_LIMITS`):
+- Max payload size: 5MB
+- Max JSON depth: 20 levels
+- Max object keys: 500 per object
+- Max array length: 2000 elements
+- Max string length: 500KB
+
+**Implementation**: `validate_json_complexity()` recursively validates JSON structure before processing
+
+### HTTP Security Headers
+
+All responses include security headers:
+- `X-Content-Type-Options: nosniff` - Prevent MIME-type sniffing
+- `X-Frame-Options: DENY` - Prevent clickjacking
+- `X-XSS-Protection: 1; mode=block` - Enable XSS filtering
+
 ## Deployment & Testing
 
 **Hosted Server**: https://mcp.stridegpt.ai/
