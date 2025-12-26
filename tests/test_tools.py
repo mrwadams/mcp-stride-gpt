@@ -568,8 +568,8 @@ class TestGetRepositoryAnalysisGuide:
         result = get_repository_analysis_guide(args)
 
         assert 'github_mcp_integration' in result
-        assert 'initial_stage_examples' in result['github_mcp_integration']
-        assert 'deep_dive_examples' in result['github_mcp_integration']
+        assert 'initial_stage_workflow' in result['github_mcp_integration']
+        assert 'deep_dive_workflow' in result['github_mcp_integration']
 
     def test_repository_context(self):
         """Test that repository context is preserved and structured."""
