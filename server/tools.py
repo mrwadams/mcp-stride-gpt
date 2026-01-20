@@ -1,3 +1,4 @@
+from __future__ import annotations
 
 def get_stride_threat_framework(args: Dict[str, Any]) -> Dict[str, Any]:
     """Provide STRIDE threat modeling framework for LLM client analysis."""

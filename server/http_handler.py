@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 import json
 from http.server import BaseHTTPRequestHandler
 from .mcp import handle_mcp_request
 from .validation import validate_json_complexity
-from .constants import PAYLOAD_LIMITS
+from .constants import PAYLOAD_LIMITS,ERROR_CODES
+from .errors import sanitize_error
 
 class HTTPHandler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):

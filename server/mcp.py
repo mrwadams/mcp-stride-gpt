@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .tools import *
 from .errors import sanitize_error
 from .constants import ERROR_CODES

@@ -14,9 +14,10 @@ import os
 import json
 
 # Add api directory to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'api'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from index import handle_mcp_request, ERROR_CODES
+from server.mcp import handle_mcp_request
+from server.constants import ERROR_CODES
 
 
 class TestMCPInitialize:
