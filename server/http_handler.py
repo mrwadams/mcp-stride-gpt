@@ -1,13 +1,13 @@
-# api/index.py
+from __future__ import annotations
+
 import json
-
-from server.mcp import handle_mcp_request
-from server.validation import validate_json_complexity
-from server.errors import sanitize_error
-from server.constants import PAYLOAD_LIMITS, ERROR_CODES
 from http.server import BaseHTTPRequestHandler
+from .mcp import handle_mcp_request
+from .validation import validate_json_complexity
+from .constants import PAYLOAD_LIMITS,ERROR_CODES
+from .errors import sanitize_error
 
-class handler(BaseHTTPRequestHandler):
+class HTTPHandler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
         self.send_header('Access-Control-Allow-Origin', '*')
@@ -123,5 +123,3 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
         self.wfile.write(json.dumps(error_data).encode())
-        
-        

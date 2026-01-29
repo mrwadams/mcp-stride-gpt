@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mcp-stride-gpt"
+version = "0.1.0"
+description = "Internal MCP server for STRIDE threat modeling"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+
+authors = [
+  { name = "Matt Adams" },
+  { name = "0xj4f" }
+]
+
+keywords = ["mcp", "stride", "threat-modeling", "security"]
+
+urls = {
+  Homepage = "https://github.com/mrwadams/mcp-stride-gpt",
+  Upstream = "https://github.com/mrwadams/mcp-stride-gpt"
+}
+
+dependencies = []
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=7.0"
+]
+
+[tool.setuptools]
+packages = ["server"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

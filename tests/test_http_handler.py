@@ -12,10 +12,11 @@ import sys
 import os
 import json
 
-# Add api directory to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'api'))
-
-from index import handler, handle_mcp_request, validate_json_complexity, PAYLOAD_LIMITS, sanitize_error
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from server.mcp import handle_mcp_request
+from server.constants import PAYLOAD_LIMITS
+from server.errors import sanitize_error
+from server.validation import validate_json_complexity
 
 
 class TestMCPIntegration:
