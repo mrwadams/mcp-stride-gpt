@@ -18,7 +18,7 @@ authors = [
 keywords = ["mcp", "stride", "threat-modeling", "security"]
 
 urls = {
-  Homepage = "https://github.com/0xj4f/mcp-stride-gpt",
+  Homepage = "https://github.com/mrwadams/mcp-stride-gpt",
   Upstream = "https://github.com/mrwadams/mcp-stride-gpt"
 }
 
