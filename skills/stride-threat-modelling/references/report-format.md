@@ -71,6 +71,6 @@ Total threats identified; STRIDE coverage breakdown by category.
 Close with a short footer noting the framework (STRIDE), the risk-scoring method
 (DREAD), and the generation date.
 
-> HTML / printable report output (a self-contained, offline artifact) is tracked
-> separately in issue #12 and will be added here as a delivery reference once
-> built. Until then, produce Markdown.
+> For a **printable / handout / PDF** deliverable, produce the self-contained
+> HTML report instead — same section structure, delivered as a single offline
+> file. See [`html-report.md`](html-report.md). Default to Markdown otherwise.
