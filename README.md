@@ -40,6 +40,36 @@ If you find STRIDE GPT MCP useful, please consider supporting the project:
 
 ## Usage
 
+### Build Container and Run it
+
+```bash 
+docker build -t mcp-stride-gpt .
+docker run --rm -p 8787:8787 mcp-stride-gpt
+```
+
+quick test
+```
+╰─$ curl http://127.0.0.1:8787                                        56 ↵
+{
+  "name": "STRIDE GPT MCP Server",
+  "version": "0.1.0",
+  "description": "Professional threat modeling server using the STRIDE methodology",
+  "tools": [
+    "get_stride_threat_framework",
+    "generate_threat_mitigations",
+    "create_threat_attack_trees",
+    "calculate_threat_risk_scores",
+    "generate_security_tests",
+    "generate_threat_report",
+    "validate_threat_coverage",
+    "get_repository_analysis_guide"
+  ],
+  "endpoints": {
+    "POST /": "MCP JSON-RPC endpoint"
+  }
+}
+```
+
 ### Hosted MCP Server
 
 The easiest way to use STRIDE GPT is through our hosted MCP server on Vercel:
