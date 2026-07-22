@@ -38,10 +38,10 @@ DREAD scores and prioritisation.
 ### Low Priority Threats (DREAD: 5-19)
 
 ## Attack Trees
-Decompose the highest-risk threats into attack paths. Include a tree for **every
-Critical threat, plus any High threat whose path isn't self-evident**; see
-`attack-trees.md`. In Markdown output use an ASCII text tree or a Mermaid diagram;
-in HTML output use the ASCII text tree (Mermaid needs a network dependency).
+Attack paths for the highest-risk threats (which threats get a tree is defined in
+`SKILL.md` step 5); see `attack-trees.md` for the form. In Markdown output use an
+ASCII text tree or a Mermaid diagram; in HTML output use the ASCII text tree
+(Mermaid needs a network dependency).
 
 ## Recommended Mitigations
 For each: control type (Preventive/Detective/Corrective), difficulty
