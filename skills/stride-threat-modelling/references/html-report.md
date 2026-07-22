@@ -39,7 +39,11 @@ mechanics. Otherwise, stay in Markdown.
 - **Print-friendly.** Keep the template's `@media print` block: it hides the
   toolbar, expands collapsed sections, and keeps cards intact across page breaks —
   so "Print / PDF" yields a usable report.
-- **Theme-aware.** Keep the `prefers-color-scheme` light/dark variables.
+- **Theme-aware, with a toggle.** Keep the `prefers-color-scheme` defaults, the
+  `:root[data-theme="…"]` override blocks, and the toolbar **Dark/Light** toggle
+  (stamps `data-theme` on `<html>`, persisted to `localStorage`). The palette is
+  aligned with the STRIDE-GPT app brand (accent `#1cb3e0`; dark theme mirrors the
+  app ground) — keep it.
 - **Data fidelity.** Every threat, DREAD sub-score, total, priority, and
   mitigation in the HTML must trace to the model you produced in the workflow —
   the HTML is a rendering of that content, never a re-derivation. (This skill is

@@ -18,19 +18,36 @@
   management-facing overview.
 -->
 <style>
+  /* Palette aligned with the STRIDE-GPT Streamlit app: brand primary #1cb3e0
+     (cyan) as accent; the dark theme mirrors the app ground (#222f3b bg,
+     #344758 panels, #d2d2d6 text). Semantic risk colours stay separate. */
   :root{
-    --bg:#f6f7f9; --panel:#ffffff; --ink:#12151a; --muted:#5b6472;
-    --line:#e4e7ec; --accent:#4f46e5; --accent-ink:#4338ca; --chip:#eef1f5;
+    --bg:#f4f7f9; --panel:#ffffff; --ink:#16212b; --muted:#55636f;
+    --line:#dde5ea; --accent:#1cb3e0; --accent-ink:#005f87; --chip:#eaf1f5;
     --crit:#b91c1c; --high:#ea580c; --med:#ca8a04; --low:#16a34a;
-    --shadow:0 1px 2px rgba(16,21,26,.06),0 4px 16px rgba(16,21,26,.05);
+    --shadow:0 1px 2px rgba(16,33,43,.06),0 4px 16px rgba(16,33,43,.05);
   }
+  /* OS preference by default; the toolbar toggle stamps data-theme on <html>,
+     which wins over the media query in both directions (higher specificity). */
   @media (prefers-color-scheme:dark){
-    :root{
-      --bg:#0e1116; --panel:#161b22; --ink:#e7ebf0; --muted:#9aa4b2;
-      --line:#262d38; --accent:#818cf8; --accent-ink:#a5b4fc; --chip:#1e242e;
+    :root:not([data-theme]){
+      --bg:#222f3b; --panel:#2c3d4c; --ink:#d2d2d6; --muted:#93a2b0;
+      --line:#3d4f61; --accent:#1cb3e0; --accent-ink:#5cc6ea; --chip:#344758;
       --crit:#f87171; --high:#fb923c; --med:#fbbf24; --low:#4ade80;
       --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.35);
     }
+  }
+  :root[data-theme="dark"]{
+    --bg:#222f3b; --panel:#2c3d4c; --ink:#d2d2d6; --muted:#93a2b0;
+    --line:#3d4f61; --accent:#1cb3e0; --accent-ink:#5cc6ea; --chip:#344758;
+    --crit:#f87171; --high:#fb923c; --med:#fbbf24; --low:#4ade80;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.35);
+  }
+  :root[data-theme="light"]{
+    --bg:#f4f7f9; --panel:#ffffff; --ink:#16212b; --muted:#55636f;
+    --line:#dde5ea; --accent:#1cb3e0; --accent-ink:#005f87; --chip:#eaf1f5;
+    --crit:#b91c1c; --high:#ea580c; --med:#ca8a04; --low:#16a34a;
+    --shadow:0 1px 2px rgba(16,33,43,.06),0 4px 16px rgba(16,33,43,.05);
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
@@ -53,7 +70,7 @@
     font:inherit;font-size:14px;padding:7px 12px;border-radius:8px;cursor:pointer;
     border:1px solid var(--line);background:var(--panel);color:var(--ink);
   }
-  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#042733;font-weight:600}
   button[aria-pressed="true"]{background:var(--chip);border-color:var(--accent)}
   .mode-note{font-size:13px;color:var(--muted)}
 
@@ -148,6 +165,7 @@
   <span class="spacer"></span>
   <span class="mode-note" id="modeNote">Full report — all detail visible</span>
   <button id="viewToggle" aria-pressed="false">Summary view</button>
+  <button id="themeToggle" aria-label="Toggle light or dark theme">Dark mode</button>
   <button class="primary" onclick="window.print()">Print / PDF</button>
 </div>
 
@@ -319,6 +337,25 @@
 </div>
 
 <script>
+  // Light/dark toggle. Default follows the OS (prefers-color-scheme); the button
+  // stamps data-theme on <html> to override it, and persists the choice.
+  (function(){
+    var root=document.documentElement, btn=document.getElementById('themeToggle'), KEY='stride-theme';
+    function effective(){
+      var t=root.getAttribute('data-theme');
+      return t || (window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');
+    }
+    function label(){ btn.textContent = effective()==='dark' ? 'Light mode' : 'Dark mode'; }
+    try{ var s=localStorage.getItem(KEY); if(s) root.setAttribute('data-theme',s); }catch(e){}
+    label();
+    btn.addEventListener('click',function(){
+      var next = effective()==='dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme',next);
+      try{ localStorage.setItem(KEY,next); }catch(e){}
+      label();
+    });
+  })();
+
   // Full ⇄ Summary view. Summary view hides technical detail (full threat tables,
   // testing plan, appendix) for a management-facing overview. Inline, self-contained.
   (function(){
