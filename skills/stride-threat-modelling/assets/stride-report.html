@@ -25,6 +25,9 @@
     --bg:#f4f7f9; --panel:#ffffff; --ink:#16212b; --muted:#55636f;
     --line:#dde5ea; --accent:#1cb3e0; --accent-ink:#005f87; --chip:#eaf1f5;
     --crit:#b91c1c; --high:#ea580c; --med:#ca8a04; --low:#16a34a;
+    /* Severity fills for small labelled chips (badges, risk bar). Fixed across
+       themes and dark enough for white text to meet WCAG AA (>=4.5:1). */
+    --sev-crit:#991b1b; --sev-high:#c2410c; --sev-med:#854d0e; --sev-low:#166534;
     --shadow:0 1px 2px rgba(16,33,43,.06),0 4px 16px rgba(16,33,43,.05);
   }
   /* OS preference by default; the toolbar toggle stamps data-theme on <html>,
@@ -109,15 +112,16 @@
   .dread td:nth-child(n+2):nth-child(-n+7){text-align:center;font-variant-numeric:tabular-nums}
   .prio{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;
     border-radius:999px;padding:2px 10px;color:#fff}
-  .prio.critical{background:var(--crit)} .prio.high{background:var(--high)}
-  .prio.medium{background:var(--med)} .prio.low{background:var(--low)}
+  .prio.critical{background:var(--sev-crit)} .prio.high{background:var(--sev-high)}
+  .prio.medium{background:var(--sev-med)} .prio.low{background:var(--sev-low)}
   td .total{font-weight:700;font-variant-numeric:tabular-nums}
+  .dread-key{font-size:12.5px;color:var(--muted);margin:.5em 0 0}
 
   /* Risk distribution bar (hand-built, no library) */
   .riskbar{display:flex;height:26px;border-radius:8px;overflow:hidden;border:1px solid var(--line);margin:.6em 0 .3em}
   .riskbar span{display:flex;align-items:center;justify-content:center;color:#fff;font-size:12.5px;font-weight:700;min-width:26px}
-  .riskbar .critical{background:var(--crit)} .riskbar .high{background:var(--high)}
-  .riskbar .medium{background:var(--med)} .riskbar .low{background:var(--low)}
+  .riskbar .critical{background:var(--sev-crit)} .riskbar .high{background:var(--sev-high)}
+  .riskbar .medium{background:var(--sev-med)} .riskbar .low{background:var(--sev-low)}
   .risk-legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted);margin-top:6px}
   .risk-legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 
@@ -148,6 +152,12 @@
     border:1px solid var(--line);border-radius:999px;padding:1px 8px;margin-left:8px}
 
   footer{color:var(--muted);font-size:13px;text-align:center;margin-top:28px}
+
+  /* Respect reduced-motion preferences */
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+    *{transition:none !important;animation:none !important}
+  }
 
   /* Print: clean report / PDF */
   @media print{
@@ -204,10 +214,10 @@
     <span class="low" style="flex:2">2</span>
   </div>
   <div class="risk-legend">
-    <span><i style="background:var(--crit)"></i>Critical (40–50)</span>
-    <span><i style="background:var(--high)"></i>High (30–39)</span>
-    <span><i style="background:var(--med)"></i>Medium (20–29)</span>
-    <span><i style="background:var(--low)"></i>Low (5–19)</span>
+    <span><i style="background:var(--sev-crit)"></i>Critical (40–50)</span>
+    <span><i style="background:var(--sev-high)"></i>High (30–39)</span>
+    <span><i style="background:var(--sev-med)"></i>Medium (20–29)</span>
+    <span><i style="background:var(--sev-low)"></i>Low (5–19)</span>
   </div>
 </section>
 
@@ -218,9 +228,9 @@
      <em>(replace with the system overview and the trust boundaries you analysed).</em></p>
 </section>
 
-<section>
+<section class="detail-only">
   <h2><span class="n">3.</span> Threat Analysis <span class="detail-flag">Detail</span></h2>
-  <div class="detail-only">
+  <div>
     <!-- FILL: one <details> per STRIDE category with threats present; omit categories with none, but say so. -->
     <details open>
       <summary><span class="stride">S</span> Spoofing <span class="count">2 threats</span></summary>
@@ -280,6 +290,7 @@
           <td class="total">29</td><td><span class="prio medium">Medium</span></td></tr>
     </tbody>
   </table></div>
+  <p class="dread-key"><b>DREAD</b> — <b>D</b>amage · <b>R</b>eproducibility · <b>E</b>xploitability · <b>A</b>ffected Users · <b>D</b>iscoverability. Each 1–10; total 0–50.</p>
 </section>
 
 <section>
