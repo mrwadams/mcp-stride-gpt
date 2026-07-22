@@ -4,7 +4,7 @@ The deliverable is a Markdown report titled **STRIDE Threat Model Report**.
 Include the sections the user asked for; default to all of them. Populate every
 section with specific analysis from the threat model — never leave the guidance
 prose in place of real content. Each fact must trace back to a threat, DREAD
-score, or mitigation produced during the workflow.
+score, attack tree, or mitigation produced during the workflow.
 
 ## Section structure
 
@@ -36,6 +36,12 @@ DREAD scores and prioritisation.
 ### High Priority Threats (DREAD: 30-39)
 ### Medium Priority Threats (DREAD: 20-29)
 ### Low Priority Threats (DREAD: 5-19)
+
+## Attack Trees
+Decompose the highest-risk threats into attack paths. Include a tree for **every
+Critical threat, plus any High threat whose path isn't self-evident**; see
+`attack-trees.md`. In Markdown output use an ASCII text tree or a Mermaid diagram;
+in HTML output use the ASCII text tree (Mermaid needs a network dependency).
 
 ## Recommended Mitigations
 For each: control type (Preventive/Detective/Corrective), difficulty
