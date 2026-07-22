@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>STRIDE Threat Model — REPLACE WITH SYSTEM NAME</title>
+<!--
+  STRIDE-GPT threat model report — canonical design reference for the
+  `stride-threat-modelling` skill. Self-contained: all CSS/JS/fonts/visuals
+  inline, so it renders offline, prints to a clean PDF, and can be emailed or
+  reviewed in an air-gapped environment. When the user asks for an HTML report,
+  CLONE this file's structure + CSS and replace the example content (PayFlow) with
+  the real threat model built during the skill workflow. Keep everything inline
+  and network-free.
+
+  Detailed/technical material (full threat tables, testing plan) carries
+  class="detail-only"; the toolbar "Summary view" toggle hides it for a
+  management-facing overview.
+-->
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#ffffff; --ink:#12151a; --muted:#5b6472;
+    --line:#e4e7ec; --accent:#4f46e5; --accent-ink:#4338ca; --chip:#eef1f5;
+    --crit:#b91c1c; --high:#ea580c; --med:#ca8a04; --low:#16a34a;
+    --shadow:0 1px 2px rgba(16,21,26,.06),0 4px 16px rgba(16,21,26,.05);
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0e1116; --panel:#161b22; --ink:#e7ebf0; --muted:#9aa4b2;
+      --line:#262d38; --accent:#818cf8; --accent-ink:#a5b4fc; --chip:#1e242e;
+      --crit:#f87171; --high:#fb923c; --med:#fbbf24; --low:#4ade80;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.35);
+    }
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:960px;margin:0 auto;padding:0 20px 96px}
+  a{color:var(--accent-ink)}
+
+  /* Toolbar */
+  .toolbar{
+    position:sticky;top:0;z-index:10;display:flex;gap:8px;align-items:center;
+    flex-wrap:wrap;padding:10px 20px;background:color-mix(in srgb,var(--panel) 88%,transparent);
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line);
+  }
+  .toolbar .spacer{flex:1}
+  button{
+    font:inherit;font-size:14px;padding:7px 12px;border-radius:8px;cursor:pointer;
+    border:1px solid var(--line);background:var(--panel);color:var(--ink);
+  }
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  button[aria-pressed="true"]{background:var(--chip);border-color:var(--accent)}
+  .mode-note{font-size:13px;color:var(--muted)}
+
+  /* Header */
+  header.hero{padding:40px 0 12px}
+  .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink);font-weight:700}
+  h1{font-size:30px;line-height:1.2;margin:.35em 0 .1em}
+  .meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  .badge{font-size:13px;background:var(--chip);border:1px solid var(--line);border-radius:999px;padding:4px 12px}
+  .badge b{color:var(--muted);font-weight:600}
+
+  section{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:22px 24px;margin:18px 0;box-shadow:var(--shadow)}
+  section h2{font-size:20px;margin:.1em 0 .6em;display:flex;align-items:baseline;gap:10px}
+  section h2 .n{color:var(--accent-ink);font-variant-numeric:tabular-nums}
+  h3{font-size:15px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:1.4em 0 .5em}
+
+  table{width:100%;border-collapse:collapse;font-size:14.5px;margin:.4em 0}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+  .tid{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;white-space:nowrap;color:var(--accent-ink)}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em;background:var(--chip);padding:1px 5px;border-radius:5px}
+  .tablewrap{overflow-x:auto}
+
+  /* STRIDE letter chips */
+  .stride{display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;border-radius:6px;
+    font-weight:700;font-size:13px;background:var(--chip);border:1px solid var(--line);color:var(--accent-ink)}
+
+  /* DREAD scorecard + priority badges */
+  .dread td:nth-child(n+2):nth-child(-n+7){text-align:center;font-variant-numeric:tabular-nums}
+  .prio{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;
+    border-radius:999px;padding:2px 10px;color:#fff}
+  .prio.critical{background:var(--crit)} .prio.high{background:var(--high)}
+  .prio.medium{background:var(--med)} .prio.low{background:var(--low)}
+  td .total{font-weight:700;font-variant-numeric:tabular-nums}
+
+  /* Risk distribution bar (hand-built, no library) */
+  .riskbar{display:flex;height:26px;border-radius:8px;overflow:hidden;border:1px solid var(--line);margin:.6em 0 .3em}
+  .riskbar span{display:flex;align-items:center;justify-content:center;color:#fff;font-size:12.5px;font-weight:700;min-width:26px}
+  .riskbar .critical{background:var(--crit)} .riskbar .high{background:var(--high)}
+  .riskbar .medium{background:var(--med)} .riskbar .low{background:var(--low)}
+  .risk-legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted);margin-top:6px}
+  .risk-legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+
+  details{border:1px solid var(--line);border-radius:10px;padding:0 14px;margin:10px 0;background:var(--bg)}
+  details[open]{padding-bottom:8px}
+  summary{cursor:pointer;font-weight:600;padding:12px 0;list-style:none;display:flex;align-items:center;gap:10px}
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:"▸";color:var(--muted);display:inline-block;transition:transform .15s}
+  details[open] summary::before{transform:rotate(90deg)}
+  .count{margin-left:auto;font-size:12px;color:var(--muted);font-weight:600}
+
+  ul.tight{margin:.3em 0;padding-left:1.2em}ul.tight li{margin:.3em 0}
+  .checklist{list-style:none;margin:0;padding:0}
+  .checklist li{padding:6px 0 6px 30px;position:relative}
+  .checklist li::before{content:"";position:absolute;left:0;top:7px;width:16px;height:16px;border:2px solid var(--muted);border-radius:4px}
+
+  /* Roadmap timeline */
+  .timeline{list-style:none;margin:0;padding:0 0 0 4px}
+  .timeline li{position:relative;padding:0 0 20px 28px;border-left:2px solid var(--line)}
+  .timeline li:last-child{border-left-color:transparent}
+  .timeline li::before{content:"";position:absolute;left:-7px;top:2px;width:12px;height:12px;border-radius:50%;
+    background:var(--panel);border:2px solid var(--accent)}
+  .timeline .when{font-weight:700;font-size:14px}
+
+  .detail-only{display:block}
+  body.summary .detail-only{display:none !important}
+  .detail-flag{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);
+    border:1px solid var(--line);border-radius:999px;padding:1px 8px;margin-left:8px}
+
+  footer{color:var(--muted);font-size:13px;text-align:center;margin-top:28px}
+
+  /* Print: clean report / PDF */
+  @media print{
+    :root{--bg:#fff;--panel:#fff;--ink:#000;--muted:#444;--line:#bbb;--chip:#f0f0f0;--shadow:none}
+    .toolbar,button{display:none !important}
+    body.summary .detail-only{display:block !important}
+    section{break-inside:avoid;border:1px solid #ccc;box-shadow:none}
+    details{border:none;padding:0}details summary::before{display:none}
+    .tablewrap{overflow:visible}
+    table{font-size:11.5px}
+    th,td{padding:6px 7px;overflow-wrap:anywhere}
+    .tid{white-space:normal}
+    code{white-space:normal;word-break:break-word}
+    a{color:#000;text-decoration:none}
+  }
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <strong style="font-size:14px">STRIDE-GPT</strong>
+  <span class="spacer"></span>
+  <span class="mode-note" id="modeNote">Full report — all detail visible</span>
+  <button id="viewToggle" aria-pressed="false">Summary view</button>
+  <button class="primary" onclick="window.print()">Print / PDF</button>
+</div>
+
+<div class="wrap">
+<header class="hero">
+  <div class="eyebrow">STRIDE Threat Model Report</div>
+  <!-- FILL: system name -->
+  <h1>PayFlow — Payments Orchestration Platform</h1>
+  <div class="meta">
+    <span class="badge"><b>Type</b> Web application / API</span>
+    <span class="badge"><b>Exposure</b> Internet-facing</span>
+    <span class="badge"><b>Auth</b> OAuth 2.0 + API keys</span>
+    <span class="badge"><b>Sensitive data</b> Cardholder data, PII</span>
+    <span class="badge"><b>Framework</b> STRIDE · DREAD</span>
+  </div>
+</header>
+
+<section>
+  <h2><span class="n">1.</span> Executive Summary</h2>
+  <!-- FILL: total threats across STRIDE categories, critical/high highlights, key recommendations, risk summary. -->
+  <p><strong>12 threats</strong> were identified across all six STRIDE categories for the PayFlow platform.
+     <strong>2 are Critical</strong> and <strong>4 High</strong>, concentrated at the public API trust boundary and the
+     card-data store. <em>(Replace with the real summary.)</em></p>
+
+  <div class="riskbar" role="img" aria-label="Risk distribution: 2 Critical, 4 High, 4 Medium, 2 Low">
+    <!-- FILL: flex-grow proportional to counts; label shows the count -->
+    <span class="critical" style="flex:2">2</span>
+    <span class="high" style="flex:4">4</span>
+    <span class="medium" style="flex:4">4</span>
+    <span class="low" style="flex:2">2</span>
+  </div>
+  <div class="risk-legend">
+    <span><i style="background:var(--crit)"></i>Critical (40–50)</span>
+    <span><i style="background:var(--high)"></i>High (30–39)</span>
+    <span><i style="background:var(--med)"></i>Medium (20–29)</span>
+    <span><i style="background:var(--low)"></i>Low (5–19)</span>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">2.</span> Application Overview</h2>
+  <!-- FILL: architecture, components, security-relevant characteristics; name the trust boundaries analysed. -->
+  <p>PayFlow is a multi-tenant SaaS that brokers card payments between merchant front-ends and acquiring banks…
+     <em>(replace with the system overview and the trust boundaries you analysed).</em></p>
+</section>
+
+<section>
+  <h2><span class="n">3.</span> Threat Analysis <span class="detail-flag">Detail</span></h2>
+  <div class="detail-only">
+    <!-- FILL: one <details> per STRIDE category with threats present; omit categories with none, but say so. -->
+    <details open>
+      <summary><span class="stride">S</span> Spoofing <span class="count">2 threats</span></summary>
+      <div class="tablewrap"><table>
+        <thead><tr><th>ID</th><th>Threat</th><th>Attack scenario</th><th>Impact</th></tr></thead>
+        <tbody>
+          <tr><td class="tid">S-01</td><td>API-key replay against the public payments API</td>
+              <td>A leaked merchant API key is replayed from an attacker host; no key binding or rotation.</td>
+              <td>Fraudulent charges on the merchant's account.</td></tr>
+        </tbody>
+      </table></div>
+    </details>
+    <details>
+      <summary><span class="stride">T</span> Tampering <span class="count">2 threats</span></summary>
+      <div class="tablewrap"><table>
+        <thead><tr><th>ID</th><th>Threat</th><th>Attack scenario</th><th>Impact</th></tr></thead>
+        <tbody><tr><td class="tid">T-01</td><td>Amount tampering in transit</td>
+          <td>Webhook callbacks are not signed; a MITM alters the settlement amount.</td>
+          <td>Financial loss / reconciliation failure.</td></tr></tbody>
+      </table></div>
+    </details>
+    <details>
+      <summary><span class="stride">R</span> Repudiation <span class="count">1 threat</span></summary>
+      <p style="color:var(--muted);padding:4px 0 10px">Fill per category, or note "no threats identified for this category".</p>
+    </details>
+    <details>
+      <summary><span class="stride">I</span> Information Disclosure <span class="count">3 threats</span></summary>
+      <p style="color:var(--muted);padding:4px 0 10px">…</p>
+    </details>
+    <details>
+      <summary><span class="stride">D</span> Denial of Service <span class="count">2 threats</span></summary>
+      <p style="color:var(--muted);padding:4px 0 10px">…</p>
+    </details>
+    <details>
+      <summary><span class="stride">E</span> Elevation of Privilege <span class="count">2 threats</span></summary>
+      <p style="color:var(--muted);padding:4px 0 10px">…</p>
+    </details>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">4.</span> Risk Assessment — DREAD</h2>
+  <!-- FILL: one row per threat. Sub-scores 1–10; total 0–50; priority from the total. -->
+  <div class="tablewrap"><table class="dread">
+    <thead><tr>
+      <th>Threat</th><th title="Damage">D</th><th title="Reproducibility">R</th><th title="Exploitability">E</th>
+      <th title="Affected Users">A</th><th title="Discoverability">D</th><th>Total</th><th>Priority</th>
+    </tr></thead>
+    <tbody>
+      <tr><td class="tid">S-01 · API-key replay</td><td>9</td><td>9</td><td>8</td><td>10</td><td>9</td>
+          <td class="total">45</td><td><span class="prio critical">Critical</span></td></tr>
+      <tr><td class="tid">T-01 · Amount tampering</td><td>8</td><td>7</td><td>6</td><td>7</td><td>6</td>
+          <td class="total">34</td><td><span class="prio high">High</span></td></tr>
+      <tr><td class="tid">I-02 · Verbose API errors</td><td>5</td><td>7</td><td>6</td><td>5</td><td>8</td>
+          <td class="total">31</td><td><span class="prio high">High</span></td></tr>
+      <tr><td class="tid">D-01 · Unbounded webhook retries</td><td>5</td><td>8</td><td>6</td><td>6</td><td>4</td>
+          <td class="total">29</td><td><span class="prio medium">Medium</span></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2><span class="n">5.</span> Recommended Mitigations</h2>
+  <!-- FILL: grouped by priority; for each control give category (Preventive/Detective/Corrective), difficulty, guidance. -->
+  <h3>High priority</h3>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Threat</th><th>Control</th><th>Type</th><th>Difficulty</th><th>Guidance</th></tr></thead>
+    <tbody>
+      <tr><td class="tid">S-01</td><td>Bind API keys to source + mandatory rotation</td><td>Preventive</td><td>Medium</td>
+          <td>Scope keys to registered IP ranges/mTLS; short-lived tokens; alert on key reuse from new origins.</td></tr>
+      <tr><td class="tid">T-01</td><td>Sign & verify all webhook payloads</td><td>Preventive</td><td>Easy</td>
+          <td>HMAC signature over the raw body with a per-merchant secret; reject on mismatch; add replay nonce.</td></tr>
+    </tbody>
+  </table></div>
+  <h3 class="detail-only">Medium &amp; low priority <span class="detail-flag">Detail</span></h3>
+  <div class="detail-only"><p style="color:var(--muted)">…</p></div>
+</section>
+
+<section class="detail-only">
+  <h2><span class="n">6.</span> Security Testing Plan <span class="detail-flag">Detail</span></h2>
+  <!-- FILL: test scenarios per major threat; positive + negative; methodology. Gherkin by default. -->
+  <details open><summary>S-01 · API-key replay <span class="count">Gherkin</span></summary>
+    <pre style="overflow-x:auto"><code>Feature: API key binding
+  Scenario: Replay from an unregistered origin is rejected
+    Given a valid merchant API key
+    When the key is presented from an unregistered IP
+    Then the request is rejected with 401
+    And the key-reuse alert fires</code></pre>
+  </details>
+</section>
+
+<section>
+  <h2><span class="n">7.</span> Implementation Roadmap</h2>
+  <!-- FILL: sequence mitigations into phases. -->
+  <ol class="timeline">
+    <li><div class="when">Phase 1 · 0–30 days</div><div>Critical mitigations: API-key binding + rotation; webhook signing.</div></li>
+    <li><div class="when">Phase 2 · 30–90 days</div><div>High-priority mitigations: error-response hardening; rate limiting.</div></li>
+    <li><div class="when">Phase 3 · 90+ days</div><div>Medium and low-priority controls; monitoring coverage review.</div></li>
+  </ol>
+</section>
+
+<section class="detail-only">
+  <h2><span class="n">8.</span> Appendix <span class="detail-flag">Detail</span></h2>
+  <h3>STRIDE coverage</h3>
+  <ul class="tight">
+    <li>Spoofing 2 · Tampering 2 · Repudiation 1 · Information Disclosure 3 · Denial of Service 2 · Elevation of Privilege 2</li>
+  </ul>
+  <h3>References</h3>
+  <ul class="tight">
+    <li>STRIDE Threat Modeling Methodology</li>
+    <li>DREAD Risk Assessment Framework</li>
+    <li>OWASP Top 10 · CWE/SANS Top 25</li>
+  </ul>
+</section>
+
+<footer>
+  Threat model authored with the <strong>STRIDE-GPT</strong> threat-modelling skill (STRIDE · DREAD).
+  Validate against your own environment before relying on it.
+</footer>
+</div>
+
+<script>
+  // Full ⇄ Summary view. Summary view hides technical detail (full threat tables,
+  // testing plan, appendix) for a management-facing overview. Inline, self-contained.
+  (function(){
+    var btn=document.getElementById('viewToggle'), note=document.getElementById('modeNote');
+    btn.addEventListener('click',function(){
+      var summary=document.body.classList.toggle('summary');
+      btn.setAttribute('aria-pressed',String(summary));
+      btn.textContent=summary?'Full report':'Summary view';
+      note.textContent=summary?'Summary view — technical detail hidden':'Full report — all detail visible';
+    });
+  })();
+
+  // Expand every <details> when printing, then restore. A closed <details> hides
+  // its content via the UA shadow-DOM slot, which author CSS on the light-DOM
+  // children cannot override — so force `open` in JS, otherwise collapsed threat
+  // categories and tests would be missing from the printed report / PDF.
+  (function(){
+    function eachDetails(fn){Array.prototype.forEach.call(document.querySelectorAll('details'),fn);}
+    window.addEventListener('beforeprint',function(){
+      eachDetails(function(d){d.dataset._wasOpen=d.open?'1':'0';d.open=true;});
+    });
+    window.addEventListener('afterprint',function(){
+      eachDetails(function(d){d.open=d.dataset._wasOpen==='1';delete d.dataset._wasOpen;});
+    });
+  })();
+</script>
+</body>
+</html>

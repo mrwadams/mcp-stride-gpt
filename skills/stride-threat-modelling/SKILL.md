@@ -107,6 +107,12 @@ Default output is **Markdown**, structured per
 professional and the recommendations specific to the described system — no
 generic advice that would read the same for any application.
 
+When the user asks for a **report / handout / deck / printable / PDF** (or "make
+it nice"), switch to the self-contained HTML report per
+[`references/html-report.md`](references/html-report.md) instead — same content,
+delivered as a single offline file written to the OS temp dir and opened. Stay in
+Markdown otherwise.
+
 ## Reference files
 
 Consulted on demand — load the one the current step points to:
@@ -125,5 +131,7 @@ Consulted on demand — load the one the current step points to:
   completeness checklist and common coverage gaps.
 - [`references/report-format.md`](references/report-format.md) — the house-style
   report structure.
+- [`references/html-report.md`](references/html-report.md) — delivery mechanics
+  for the self-contained HTML report (clones `assets/stride-report.html`).
 - [`references/repo-analysis.md`](references/repo-analysis.md) — staged approach
   for extracting threat-modelling inputs from a code repository.
