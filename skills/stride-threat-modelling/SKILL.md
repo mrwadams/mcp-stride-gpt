@@ -77,11 +77,12 @@ until it holds.
    See [`references/mitigations.md`](references/mitigations.md). *Done when* every
    High/Critical threat has at least one concrete, implementable mitigation.
 
-5. **(Optional) Attack trees.** When the user wants attack paths visualised, or a
-   high-value threat warrants decomposition, build attack trees per
-   [`references/attack-trees.md`](references/attack-trees.md). *Done when* each
-   requested tree decomposes a root goal into sub-goals, methods, and
-   prerequisites.
+5. **Attack trees for the top threats.** Build an attack tree for **every
+   Critical threat, and any High threat whose path isn't self-evident** —
+   decomposing a root goal into sub-goals, methods, and prerequisites — per
+   [`references/attack-trees.md`](references/attack-trees.md). Build one for any
+   other threat the user asks to visualise. *Done when* every Critical threat has
+   a tree and each tree bottoms out in concrete prerequisites.
 
 6. **(Optional) Security tests.** When the user wants validation, generate test
    cases (default Gherkin) that prove each mitigation works, per
@@ -98,7 +99,8 @@ until it holds.
 8. **Assemble the report.** Produce the deliverable in the house style defined by
    [`references/report-format.md`](references/report-format.md) — Markdown by
    default. *Done when* the report contains every requested section and each fact
-   traces back to a threat, score, or mitigation from the steps above.
+   traces back to a threat, score, attack tree, or mitigation from the steps
+   above.
 
 ## Output
 
