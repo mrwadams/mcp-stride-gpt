@@ -98,11 +98,11 @@
   code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em;background:var(--chip);padding:1px 5px;border-radius:5px}
   .tablewrap{overflow-x:auto}
 
-  /* Attack tree (ASCII, offline — no Mermaid/CDN) */
-  pre.tree{margin:.5em 0;padding:14px 16px;background:var(--chip);border:1px solid var(--line);
+  /* Code blocks: attack trees (ASCII, offline — no Mermaid/CDN) and test snippets */
+  pre{margin:.5em 0;padding:14px 16px;background:var(--chip);border:1px solid var(--line);
     border-radius:10px;overflow-x:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-    font-size:13px;line-height:1.5;color:var(--ink);tab-size:2}
-  pre.tree b{color:var(--accent-ink)}
+    font-size:13px;line-height:1.5;color:var(--ink);tab-size:2;white-space:pre}
+  pre b{color:var(--accent-ink)}
 
   /* STRIDE letter chips */
   .stride{display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;border-radius:6px;
@@ -161,16 +161,20 @@
 
   /* Print: clean report / PDF */
   @media print{
-    :root{--bg:#fff;--panel:#fff;--ink:#000;--muted:#444;--line:#bbb;--chip:#f0f0f0;--shadow:none}
+    /* Force colours (badges, chips, risk bar, code blocks) regardless of the
+       browser's "Background graphics" setting, so the PDF looks the same. */
+    html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    :root{--bg:#fff;--panel:#fff;--ink:#000;--muted:#444;--line:#bbb;--chip:#f1f3f5;--shadow:none}
     .toolbar,button{display:none !important}
     body.summary .detail-only{display:block !important}
     section{break-inside:avoid;border:1px solid #ccc;box-shadow:none}
     details{border:none;padding:0}details summary::before{display:none}
+    pre{break-inside:avoid;font-size:12px}
     .tablewrap{overflow:visible}
-    table{font-size:11.5px}
-    th,td{padding:6px 7px;overflow-wrap:anywhere}
-    .tid{white-space:normal}
-    code{white-space:normal;word-break:break-word}
+    table{font-size:11px}
+    th,td{padding:6px 7px;overflow-wrap:break-word}
+    /* Wrap inline code inside table cells; leave <pre> code blocks preformatted. */
+    td code{white-space:normal;word-break:break-word}
     a{color:#000;text-decoration:none}
   }
 </style>
@@ -313,11 +317,11 @@
   <!-- FILL: grouped by priority; for each control give category (Preventive/Detective/Corrective), difficulty, guidance. -->
   <h3>High priority</h3>
   <div class="tablewrap"><table>
-    <thead><tr><th>Threat</th><th>Control</th><th>Type</th><th>Difficulty</th><th>Guidance</th></tr></thead>
+    <thead><tr><th>Threat</th><th>Control</th><th>Class</th><th>Guidance</th></tr></thead>
     <tbody>
-      <tr><td class="tid">S-01</td><td>Bind API keys to source + mandatory rotation</td><td>Preventive</td><td>Medium</td>
+      <tr><td class="tid">S-01</td><td>Bind API keys to source + mandatory rotation</td><td>Preventive · Medium</td>
           <td>Scope keys to registered IP ranges/mTLS; short-lived tokens; alert on key reuse from new origins.</td></tr>
-      <tr><td class="tid">T-01</td><td>Sign & verify all webhook payloads</td><td>Preventive</td><td>Easy</td>
+      <tr><td class="tid">T-01</td><td>Sign & verify all webhook payloads</td><td>Preventive · Easy</td>
           <td>HMAC signature over the raw body with a per-merchant secret; reject on mismatch; add replay nonce.</td></tr>
     </tbody>
   </table></div>
