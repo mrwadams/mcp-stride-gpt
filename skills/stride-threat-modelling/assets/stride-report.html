@@ -95,6 +95,12 @@
   code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em;background:var(--chip);padding:1px 5px;border-radius:5px}
   .tablewrap{overflow-x:auto}
 
+  /* Attack tree (ASCII, offline — no Mermaid/CDN) */
+  pre.tree{margin:.5em 0;padding:14px 16px;background:var(--chip);border:1px solid var(--line);
+    border-radius:10px;overflow-x:auto;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+    font-size:13px;line-height:1.5;color:var(--ink);tab-size:2}
+  pre.tree b{color:var(--accent-ink)}
+
   /* STRIDE letter chips */
   .stride{display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;border-radius:6px;
     font-weight:700;font-size:13px;background:var(--chip);border:1px solid var(--line);color:var(--accent-ink)}
@@ -277,7 +283,22 @@
 </section>
 
 <section>
-  <h2><span class="n">5.</span> Recommended Mitigations</h2>
+  <h2><span class="n">5.</span> Attack Trees</h2>
+  <!-- FILL: one tree per Critical threat (and any High whose path isn't obvious). ASCII text —
+       Mermaid needs a network dependency, so keep trees text-based in the offline HTML. -->
+  <h3>S-01 · API-key replay — <span class="prio critical">Critical</span></h3>
+  <pre class="tree"><b>Goal: Charge a merchant fraudulently via the public payments API (S-01)</b>
+├── [OR] Obtain a valid merchant API key
+│   ├── Harvest from a leaked repo or client-side bundle
+│   ├── Sniff an unpinned mobile / web client
+│   └── Phish a merchant integrator
+└── [AND] Replay the key from an attacker host
+    ├── Key is not bound to source IP / mTLS
+    └── Key is long-lived (no rotation) and reuse is unalerted</pre>
+</section>
+
+<section>
+  <h2><span class="n">6.</span> Recommended Mitigations</h2>
   <!-- FILL: grouped by priority; for each control give category (Preventive/Detective/Corrective), difficulty, guidance. -->
   <h3>High priority</h3>
   <div class="tablewrap"><table>
@@ -294,7 +315,7 @@
 </section>
 
 <section class="detail-only">
-  <h2><span class="n">6.</span> Security Testing Plan <span class="detail-flag">Detail</span></h2>
+  <h2><span class="n">7.</span> Security Testing Plan <span class="detail-flag">Detail</span></h2>
   <!-- FILL: test scenarios per major threat; positive + negative; methodology. Gherkin by default. -->
   <details open><summary>S-01 · API-key replay <span class="count">Gherkin</span></summary>
     <pre style="overflow-x:auto"><code>Feature: API key binding
@@ -307,7 +328,7 @@
 </section>
 
 <section>
-  <h2><span class="n">7.</span> Implementation Roadmap</h2>
+  <h2><span class="n">8.</span> Implementation Roadmap</h2>
   <!-- FILL: sequence mitigations into phases. -->
   <ol class="timeline">
     <li><div class="when">Phase 1 · 0–30 days</div><div>Critical mitigations: API-key binding + rotation; webhook signing.</div></li>
@@ -317,7 +338,7 @@
 </section>
 
 <section class="detail-only">
-  <h2><span class="n">8.</span> Appendix <span class="detail-flag">Detail</span></h2>
+  <h2><span class="n">9.</span> Appendix <span class="detail-flag">Detail</span></h2>
   <h3>STRIDE coverage</h3>
   <ul class="tight">
     <li>Spoofing 2 · Tampering 2 · Repudiation 1 · Information Disclosure 3 · Denial of Service 2 · Elevation of Privilege 2</li>

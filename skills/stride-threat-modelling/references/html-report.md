@@ -61,6 +61,10 @@ mechanics. Otherwise, stay in Markdown.
   a coloured priority badge (`critical` / `high` / `medium` / `low`).
 - **Threat analysis by category.** One `<details>` per STRIDE category that has
   threats; omit empty categories but say so (matches the coverage discipline).
+- **Attack trees.** Render as an **ASCII text tree** in `<pre class="tree">` — one
+  per Critical threat (and any High whose path isn't obvious). Do **not** use
+  Mermaid here: it needs a network-loaded library, which breaks the self-contained
+  rule. (Markdown output may use Mermaid, since the client renders it.)
 
 ## Optional enhancements (only if the user wants them)
 
