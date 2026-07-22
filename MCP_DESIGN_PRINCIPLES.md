@@ -437,6 +437,24 @@ def analyze_threats():
 - **Easy debugging** - if it works locally, it works in production
 - **Reduced maintenance** - only one implementation to maintain
 
+### The Hosting Invariant: No-Key, Read-Only on the Hosted Surface
+
+The hosted (Vercel) endpoint stays **no-key and read-only**: it returns
+frameworks and structured data and **makes no LLM call**. This is a deliberate
+boundary, not an accident of the current toolset — every tool returns static
+methodology, so hosting confers no capability the bundled skill doesn't already
+carry.
+
+Any future **server-side generation** — a bring-your-own-key "generate" tool that
+calls an LLM — belongs on **local stdio**, never on the multi-tenant hosted
+surface. Rationale: a hosted generate endpoint is a multi-tenant attack surface
+(prompt-injection and abuse across tenants), and it raises the question of *whose
+key pays* for each call. Keeping generation on local stdio makes the caller's own
+key and environment the trust boundary.
+
+Keep this line even as the server grows: read-only data on the hosted endpoint;
+key-bearing generation only on local stdio.
+
 ## Conclusion
 
 Effective MCP servers are **information multipliers** that enhance LLM capabilities rather than replacing them. By following these principles:
