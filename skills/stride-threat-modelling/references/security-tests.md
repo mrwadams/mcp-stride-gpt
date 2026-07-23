@@ -15,7 +15,7 @@ threat, include at least one **positive** test (control works) and one
 
 - **Authentication** — identity verification and access controls.
 - **Authorization** — permission and privilege validation.
-- **Input validation** — data sanitization and bounds checking.
+- **Input validation** — data sanitisation and bounds checking.
 - **Encryption** — data protection in transit and at rest.
 - **Logging** — security event detection and recording.
 
