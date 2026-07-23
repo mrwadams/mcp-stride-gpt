@@ -4,7 +4,9 @@ The deliverable is a Markdown report titled **STRIDE Threat Model Report**.
 Include the sections the user asked for; default to all of them. Populate every
 section with specific analysis from the threat model — never leave the guidance
 prose in place of real content. Each fact must trace back to a threat, DREAD
-score, attack tree, or mitigation produced during the workflow.
+score, attack tree, or mitigation produced during the workflow. For a complete
+worked example of this house style end to end, see
+[`../EXAMPLES.md`](../EXAMPLES.md).
 
 ## Section structure
 

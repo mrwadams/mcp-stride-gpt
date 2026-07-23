@@ -12,7 +12,7 @@ trust boundary in the system, ask which threats in each category apply.
 | **S** | Spoofing | Authentication | Impersonating something or someone else |
 | **T** | Tampering | Integrity | Modifying data or code |
 | **R** | Repudiation | Non-repudiation | Claiming to have not performed an action |
-| **I** | Information Disclosure | Confidentiality | Exposing information to unauthorized individuals |
+| **I** | Information Disclosure | Confidentiality | Exposing information to unauthorised individuals |
 | **D** | Denial of Service | Availability | Denying or degrading service availability |
 | **E** | Elevation of Privilege | Authorization | Gaining capabilities without proper authorization |
 
@@ -24,7 +24,7 @@ trust boundary in the system, ask which threats in each category apply.
   configuration modification; message/request tampering; file/database alteration.
 - **Repudiation** — insufficient audit logging; log tampering/deletion;
   non-repudiation failures; transaction denial; accountability gaps.
-- **Information Disclosure** — unauthorized data access; sensitive information
+- **Information Disclosure** — unauthorised data access; sensitive information
   leakage; privacy violations; reconnaissance/enumeration; metadata exposure.
 - **Denial of Service** — resource exhaustion; service flooding/overload;
   infrastructure disruption; performance degradation; availability attacks.

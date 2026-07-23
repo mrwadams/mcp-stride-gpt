@@ -137,3 +137,5 @@ Consulted on demand — load the one the current step points to:
   for the self-contained HTML report (clones `assets/stride-report.html`).
 - [`references/repo-analysis.md`](references/repo-analysis.md) — staged approach
   for extracting threat-modelling inputs from a code repository.
+- [`EXAMPLES.md`](EXAMPLES.md) — a full worked example carrying one system through
+  the whole workflow, in the house style; consult it to calibrate format and depth.

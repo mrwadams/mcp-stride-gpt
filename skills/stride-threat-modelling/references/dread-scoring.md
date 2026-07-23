@@ -38,7 +38,7 @@ circumstances) · 4–6 moderate (specific configuration or user actions) ·
 10 always (100% reproducible, deterministic).
 
 **Exploitability** — 1–3 expert (deep expertise, custom tools, significant time) ·
-4–6 intermediate (moderate skill, some tool customization) · 7–9 basic (standard
+4–6 intermediate (moderate skill, some tool customisation) · 7–9 basic (standard
 tools/scripts available, minimal expertise) · 10 trivial (no skill required,
 fully automated tools exist).
 
