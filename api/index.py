@@ -889,7 +889,7 @@ def get_repository_analysis_guide(args: Dict[str, Any]) -> Dict[str, Any]:
                 },
                 "deep_dive": {
                     "objective": "Extract detailed security context for threat modeling",
-                    "target_files": "10-15 targeted files/searches",
+                    "target_files": "8-12 targeted files/searches",
                     "focus": "Security-critical components only",
                     "output": "Trust boundaries, sensitive data, access controls"
                 },
