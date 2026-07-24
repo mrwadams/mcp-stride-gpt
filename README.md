@@ -16,15 +16,20 @@ A serverless MCP (Model Context Protocol) HTTP server deployed on Vercel that pr
 
 ## Features
 
-- **Comprehensive STRIDE Analysis**: Generate threats across all six STRIDE categories with detailed framework guidance
+> **Framework provider, not analyzer.** These MCP tools return methodology, scoring
+> rubrics, and report templates for *your* LLM client to populate with the real analysis —
+> they don't perform the analysis themselves. In skill-aware clients the companion
+> `stride-threat-modelling` skill is the primary, richer path (see [Usage](#usage)).
+
+- **Comprehensive STRIDE Analysis**: Returns the STRIDE framework and guidance for your client to enumerate threats across all six categories
 - **Framework-Based Architecture**: MCP server provides threat modeling frameworks; LLM client performs semantic analysis
-- **Risk Assessment**: Calculate DREAD scores with detailed justifications and scoring criteria
-- **Attack Trees**: Generate hierarchical attack trees with Mermaid diagram support
+- **Risk Assessment**: Returns the DREAD scoring rubric and criteria for your client to score and prioritise threats
+- **Attack Trees**: Returns attack-tree structure and guidance (with Mermaid support) for your client to build application-wide trees
 - **Composable Architecture**: Designed to work seamlessly with other MCP servers (e.g., GitHub MCP)
-- **Mitigation Planning**: Generate actionable security mitigations with implementation guidance
+- **Mitigation Planning**: Returns a mitigation-strategy framework (control types, difficulty, priority) to guide your client's recommendations
 - **Repository Analysis Guide**: Systematic framework for extracting threat modeling inputs from code repositories with GitHub MCP integration
-- **Test Case Generation**: Create security test cases in multiple formats (Gherkin, Checklist, Markdown)
-- **Professional Reports**: Format complete threat models as executive-ready markdown reports
+- **Test Case Generation**: Returns security-test scaffolding and guidance in multiple formats (Gherkin, Checklist, Markdown)
+- **Professional Reports**: Returns a Markdown report template/skeleton for your client to populate with the analysis
 - **Coverage Validation**: Analyze threat model completeness and suggest enhancements
 
 ## Support the Project
@@ -230,7 +235,7 @@ STRIDE GPT MCP server is designed to work seamlessly with other specialized MCP 
 ### Core Analysis Tools
 
 #### `get_stride_threat_framework`
-**Description**: Get comprehensive STRIDE threat modeling framework and guidance for threat analysis
+**Description**: Returns the STRIDE threat-modelling framework and guidance for your client to enumerate threats against the described system. Provides structure and rubrics; your client does the analysis. In skill-aware clients, the `stride-threat-modelling` skill is the primary path.
 
 **Inputs**:
 - `app_description` (string, required): Detailed description of the application architecture and functionality
@@ -242,7 +247,7 @@ STRIDE GPT MCP server is designed to work seamlessly with other specialized MCP 
 **Output**: STRIDE threat modeling framework with categories, extended threat domains (AI/ML, cloud, IoT, etc.), application context, and analysis guidance
 
 #### `generate_threat_mitigations`
-**Description**: Generate security mitigations for multiple threats
+**Description**: Returns a mitigation-strategy framework (control types, difficulty, prioritisation) to guide your client in proposing specific mitigations for the given threats
 
 **Inputs**:
 - `threats` (array, required): Array of threat objects from get_stride_threat_framework
@@ -251,7 +256,7 @@ STRIDE GPT MCP server is designed to work seamlessly with other specialized MCP 
 **Output**: Comprehensive mitigation strategies with implementation difficulty, priorities, and defense layer categorization
 
 #### `calculate_threat_risk_scores`
-**Description**: Calculate DREAD risk scores for multiple threats
+**Description**: Returns the DREAD scoring rubric and criteria for your client to score and prioritise the given threats by severity. The server supplies the rubric; your client assigns the scores.
 
 **Inputs**:
 - `threats` (array, required): Array of threat objects
@@ -260,7 +265,7 @@ STRIDE GPT MCP server is designed to work seamlessly with other specialized MCP 
 **Output**: DREAD scores with justifications, risk levels, and priority rankings
 
 #### `create_threat_attack_trees`
-**Description**: Generate attack trees for multiple threats
+**Description**: Returns attack-tree structure and guidance (formats, decomposition method) for your client to build application-wide attack trees from the threat context
 
 **Inputs**:
 - `threats` (array, required): Array of threat objects
@@ -273,7 +278,7 @@ STRIDE GPT MCP server is designed to work seamlessly with other specialized MCP 
 
 
 #### `generate_security_tests`
-**Description**: Generate security test cases for multiple threats
+**Description**: Returns security-test scaffolding and guidance (formats, coverage areas) for your client to write test cases that validate the threats' mitigations
 
 **Inputs**:
 - `threats` (array, required): Array of threat objects
@@ -283,7 +288,7 @@ STRIDE GPT MCP server is designed to work seamlessly with other specialized MCP 
 **Output**: Comprehensive test cases with objectives and coverage estimates
 
 #### `generate_threat_report`
-**Description**: Format complete threat analysis as professional markdown report
+**Description**: Returns a Markdown report template/skeleton for your client to populate with the threat analysis. Provides the section scaffold, not finished content. In skill-aware clients the `stride-threat-modelling` skill's report-format is the authoritative house style.
 
 **Inputs**:
 - `threat_model` (array, required): Array of threat objects
@@ -452,7 +457,20 @@ vercel dev
 vercel --prod
 ```
 
-**Testing:**
+**Running the test suite:**
+
+The server ships with a `pytest` suite (unit, handler, and tool tests) configured in
+`pytest.ini`:
+
+```bash
+# Install test dependencies (the server itself has no runtime deps beyond the stdlib)
+pip install -r requirements.txt
+
+# Run the full suite with coverage (HTML report written to htmlcov/)
+pytest
+```
+
+**Other testing approaches:**
 - Test via MCP client configuration pointing to local dev server
 - Deploy to Vercel for production testing
 - Validate MCP JSON-RPC responses using curl or HTTP clients
@@ -493,4 +511,6 @@ Contributions and issues for this MCP server should be submitted to this reposit
 
 ## License
 
-Same license as the main STRIDE GPT project.
+Licensed under the **GNU General Public License v3.0 or later** (`GPL-3.0-or-later`) —
+the same license as the main STRIDE GPT project. See the [LICENSE](LICENSE) file for the
+full text.
