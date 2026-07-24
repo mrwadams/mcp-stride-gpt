@@ -8,6 +8,25 @@ This is a serverless MCP (Model Context Protocol) HTTP server deployed on Vercel
 
 **🌐 Hosted at**: https://mcp.stridegpt.ai/
 
+## Companion Skill (primary path) & Source of Truth
+
+This repo ships two complementary pieces: the **MCP server** (these tools) and the
+**`stride-threat-modelling` skill** (`skills/stride-threat-modelling/`). Since the
+skill-as-primary pivot, the **skill is the primary deliverable and the canonical home** of
+the methodology and the report house style — it runs on the client's own model with no API
+key and no dependency on this hosted server. The MCP server is the **framework-provider
+fallback** for clients that don't support Agent Skills (e.g. Gemini CLI).
+
+Practical consequences when editing this repo:
+
+- The server's tool descriptions and the server-level `instructions` field are worded to
+  make clear the tools *return frameworks/rubrics/templates* — the client's LLM does the
+  analysis. Keep them honest; don't reintroduce "the server calculates/generates X" phrasing.
+- `generate_threat_report`'s Markdown skeleton is an **intentional parallel copy** of
+  `skills/stride-threat-modelling/references/report-format.md`, kept for non-skill clients.
+  If you change one, sync the other; the skill is authoritative where available.
+- See `MCP_DESIGN_PRINCIPLES.md` for the "information provider, not analyzer" rationale.
+
 ## CRITICAL: No Keyword Matching
 
 **NEVER** use brittle keyword matching patterns in MCP server code. The MCP server should provide frameworks and instructions for the LLM client to perform the actual semantic analysis.
@@ -64,15 +83,18 @@ def get_stride_threat_framework(args: Dict[str, Any]) -> Dict[str, Any]:
 
 ## Available Tools
 
-The serverless MCP server provides 7 core threat modeling tools:
+The serverless MCP server registers 8 tools — 7 core threat modeling tools plus a
+repository-analysis guide. Each *returns a framework/rubric/template* for the client's LLM
+to populate; it does not perform the analysis itself.
 
-1. **get_stride_threat_framework**: Core STRIDE threat modeling framework with extended domains (AI/ML, cloud, IoT)
-2. **generate_threat_mitigations**: Actionable security mitigations with implementation guidance  
-3. **calculate_threat_risk_scores**: DREAD risk assessment with scoring criteria
-4. **create_threat_attack_trees**: Hierarchical attack trees with Mermaid diagram support
-5. **generate_security_tests**: Security test cases in multiple formats (Gherkin, Checklist, Markdown)
-6. **generate_threat_report**: Professional markdown reports for executive consumption
+1. **get_stride_threat_framework**: STRIDE framework + guidance (extended domains: AI/ML, cloud, IoT) for the client to enumerate threats
+2. **generate_threat_mitigations**: Mitigation-strategy framework (control types, difficulty, priority) to guide the client's recommendations
+3. **calculate_threat_risk_scores**: DREAD scoring rubric and criteria — the client assigns the scores
+4. **create_threat_attack_trees**: Attack-tree structure and guidance (with Mermaid support) for the client to build application-wide trees
+5. **generate_security_tests**: Security-test scaffolding and guidance in multiple formats (Gherkin, Checklist, Markdown)
+6. **generate_threat_report**: Markdown report template/skeleton for the client to populate (see the report-format sync note above)
 7. **validate_threat_coverage**: STRIDE coverage validation and enhancement suggestions
+8. **get_repository_analysis_guide**: Structured framework for extracting threat-modeling inputs from a repo (pairs with the GitHub MCP server)
 
 ## Tool Design Principles
 
