@@ -693,7 +693,16 @@ def generate_security_tests(args: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 def generate_threat_report(args: Dict[str, Any]) -> str:
-    """Generate threat report as formatted markdown string for LLM client analysis.
+    """Return a Markdown report skeleton for the LLM client to populate.
+
+    This does not produce finished analysis — it emits the section scaffold and
+    guidance for the client's model to fill in from the threat model, scores,
+    mitigations, and attack trees.
+
+    NOTE: This skeleton is a parallel copy of the report house style that now lives
+    canonically in skills/stride-threat-modelling/references/report-format.md. It is
+    kept here for MCP clients without Agent Skills support. Keep the two in sync; the
+    skill is authoritative where available.
 
     CRITICAL: This function MUST return a string (the markdown report), not a dict.
     The MCP handler expects content[0].text to be a string.
@@ -1485,7 +1494,7 @@ def handle_mcp_request(body: dict) -> dict:
                     "name": "STRIDE GPT MCP Server",
                     "version": "0.1.0"
                 },
-                "instructions": "Professional threat modeling server using the STRIDE methodology."
+                "instructions": "STRIDE threat modelling framework provider. These tools return methodology, scoring rubrics, and report templates for your own model to populate with real analysis — they do not perform the analysis themselves. If your client supports Agent Skills, the companion 'stride-threat-modelling' skill is the primary, richer path and runs standalone; use these tools when it is not available."
             },
             "id": request_id
         }
@@ -1495,7 +1504,7 @@ def handle_mcp_request(body: dict) -> dict:
         tools = [
             {
                 "name": "get_stride_threat_framework",
-                "description": "Get comprehensive STRIDE threat modeling framework and guidance for threat analysis",
+                "description": "Return the STRIDE threat-modelling framework and guidance for your model to enumerate threats against the described system. Provides structure and rubrics; your model does the analysis. In skill-aware clients, the 'stride-threat-modelling' skill is the primary path.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -1531,7 +1540,7 @@ def handle_mcp_request(body: dict) -> dict:
             },
             {
                 "name": "generate_threat_mitigations",
-                "description": "Generate actionable security mitigations for identified threats",
+                "description": "Return a mitigation-strategy framework (control types, difficulty, prioritisation) to guide your model in proposing specific mitigations for the given threats.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -1554,7 +1563,7 @@ def handle_mcp_request(body: dict) -> dict:
             },
             {
                 "name": "create_threat_attack_trees",
-                "description": "Generate application-wide attack tree showing common attack vectors",
+                "description": "Return attack-tree structure and guidance (formats, decomposition method) for your model to build application-wide attack trees from the threat context.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -1582,7 +1591,7 @@ def handle_mcp_request(body: dict) -> dict:
             },
             {
                 "name": "calculate_threat_risk_scores",
-                "description": "Calculate DREAD risk scores to prioritize threats by severity",
+                "description": "Return the DREAD scoring rubric and criteria for your model to score and prioritise the given threats by severity. The server supplies the rubric; your model assigns the scores.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -1605,7 +1614,7 @@ def handle_mcp_request(body: dict) -> dict:
             },
             {
                 "name": "generate_security_tests",
-                "description": "Generate security test cases to validate threat mitigations",
+                "description": "Return security-test scaffolding and guidance (formats, coverage areas) for your model to write test cases that validate the threats' mitigations.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -1633,7 +1642,7 @@ def handle_mcp_request(body: dict) -> dict:
             },
             {
                 "name": "generate_threat_report",
-                "description": "Format complete threat analysis as professional markdown report",
+                "description": "Return a Markdown report template/skeleton for your model to populate with the threat analysis. Provides the section scaffold, not finished content. In skill-aware clients the 'stride-threat-modelling' skill's report-format is the authoritative house style.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
