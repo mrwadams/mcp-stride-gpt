@@ -5,7 +5,7 @@
   "author": { "name": "Matt Adams", "email": "mrwadams@gmail.com" },
   "homepage": "https://github.com/mrwadams/mcp-stride-gpt",
   "repository": "https://github.com/mrwadams/mcp-stride-gpt",
-  "license": "GPL-3.0-or-later",
+  "license": "MIT",
   "keywords": ["stride", "threat-modelling", "security", "dread", "mcp"],
   "mcpServers": "./.mcp.json"
 }
