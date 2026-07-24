@@ -40,6 +40,38 @@ If you find STRIDE GPT MCP useful, please consider supporting the project:
 
 ## Usage
 
+STRIDE GPT ships two complementary pieces: the **MCP server** (the threat-modelling
+tools) and a **companion skill** (`skills/stride-threat-modelling/`) that carries a
+system through a consistent, house-style STRIDE workflow — enumerate STRIDE-per-element,
+score with DREAD, then produce mitigations, attack trees, tests, and a report. The
+easiest way to get both in one step is the Claude Code plugin.
+
+### Claude Code Plugin (recommended)
+
+Install the MCP tools **and** the companion skill together as a single plugin:
+
+```bash
+# 1. Add this repo as a plugin marketplace
+/plugin marketplace add mrwadams/mcp-stride-gpt
+
+# 2. Install the plugin (registers the hosted MCP server and the skill)
+/plugin install stride-gpt@stride-gpt
+```
+
+After installing, the `stride-gpt` MCP tools are available and the skill invokes as
+`/stride-gpt:stride-threat-modelling` (or automatically when you ask for a threat model).
+
+### Manual install (other clients / no plugin support)
+
+If your client doesn't support plugins, install the two pieces separately:
+
+1. **Register the hosted MCP server** — see [Hosted MCP Server](#hosted-mcp-server) below
+   (`claude mcp add stride-gpt https://mcp.stridegpt.ai/ --transport http`, or the
+   Claude Desktop config under [Configuration](#configuration)).
+2. **Add the companion skill** — copy `skills/stride-threat-modelling/` into your
+   client's skills directory (for Claude Code, `~/.claude/skills/` for all projects or
+   `.claude/skills/` within a project).
+
 ### Hosted MCP Server
 
 The easiest way to use STRIDE GPT is through our hosted MCP server on Vercel:

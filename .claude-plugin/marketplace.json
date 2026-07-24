@@ -1,0 +1,11 @@
+{
+  "name": "stride-gpt",
+  "owner": { "name": "Matt Adams", "url": "https://github.com/mrwadams" },
+  "plugins": [
+    {
+      "name": "stride-gpt",
+      "source": "./",
+      "description": "STRIDE-GPT MCP tools + companion threat-modelling skill."
+    }
+  ]
+}

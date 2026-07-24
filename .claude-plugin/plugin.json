@@ -1,0 +1,11 @@
+{
+  "name": "stride-gpt",
+  "version": "1.0.0",
+  "description": "STRIDE threat modelling — the STRIDE-GPT MCP tools plus the companion house-style threat-modelling skill, in one install.",
+  "author": { "name": "Matt Adams", "email": "mrwadams@gmail.com" },
+  "homepage": "https://github.com/mrwadams/mcp-stride-gpt",
+  "repository": "https://github.com/mrwadams/mcp-stride-gpt",
+  "license": "GPL-3.0-or-later",
+  "keywords": ["stride", "threat-modelling", "security", "dread", "mcp"],
+  "mcpServers": "./.mcp.json"
+}
