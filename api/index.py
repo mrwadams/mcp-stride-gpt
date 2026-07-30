@@ -3,6 +3,7 @@
 import sys
 import os
 import json
+from pathlib import Path
 from http.server import BaseHTTPRequestHandler
 import asyncio
 from typing import Dict, Any
@@ -99,7 +100,10 @@ CACHE_TTL_MS = 3_600_000  # tools/list is a static catalogue; 1 hour is safe
 # Server identity and capabilities, shared by `initialize` (legacy) and `server/discover`
 # (modern) so both eras report the same thing.
 SERVER_INFO = {"name": "STRIDE GPT MCP Server", "version": "0.1.0"}
-SERVER_CAPABILITIES = {"tools": {"listChanged": False}}
+SERVER_CAPABILITIES = {
+    "resources": {"listChanged": False},
+    "tools": {"listChanged": False},
+}
 SERVER_INSTRUCTIONS = (
     "STRIDE threat modelling framework provider. These tools return methodology, scoring "
     "rubrics, and report templates for your own model to populate with real analysis — they "
@@ -107,6 +111,67 @@ SERVER_INSTRUCTIONS = (
     "companion 'stride-threat-modelling' skill is the primary, richer path and runs "
     "standalone; use these tools when it is not available."
 )
+
+# Companion Agent Skill served over MCP resources (Option A of the Skills-over-MCP idea).
+# Skill-aware clients load skills/stride-threat-modelling/ natively; this exposes the same
+# files over resources/read so MCP-only clients can pull the canonical guidance (including
+# the report house style) instead of relying on parallel copies embedded in tool output.
+SKILL_NAME = "stride-threat-modelling"
+SKILL_DIR = Path(__file__).parent.parent / "skills" / SKILL_NAME
+SKILL_URI_PREFIX = "stride://skill/"
+_SKILL_MIME = {".md": "text/markdown", ".html": "text/html", ".txt": "text/plain"}
+
+
+def _skill_files():
+    """Return skill file paths relative to SKILL_DIR (POSIX), SKILL.md first.
+
+    Returns [] if the skill directory is not present in the deployment, so the resource
+    endpoints degrade gracefully rather than erroring."""
+    if not SKILL_DIR.is_dir():
+        return []
+    rels = [p.relative_to(SKILL_DIR).as_posix() for p in SKILL_DIR.rglob("*") if p.is_file()]
+    rels.sort(key=lambda r: (r != "SKILL.md", r))  # entry point first, then alphabetical
+    return rels
+
+
+def _skill_resource_descriptor(rel):
+    """Build a resources/list descriptor for a skill file at relative path `rel`."""
+    ext = os.path.splitext(rel)[1].lower()
+    if rel == "SKILL.md":
+        description = "Entry point for the STRIDE threat-modelling skill: the end-to-end workflow."
+    elif rel == "EXAMPLES.md":
+        description = "A complete worked example of the STRIDE workflow in the report house style."
+    elif rel.startswith("references/"):
+        description = f"Reference material for the STRIDE skill: {rel[len('references/'):]}"
+    elif rel.startswith("assets/"):
+        description = f"Asset used by the STRIDE skill: {rel[len('assets/'):]}"
+    else:
+        description = f"STRIDE threat-modelling skill file: {rel}"
+    return {
+        "uri": SKILL_URI_PREFIX + rel,
+        "name": f"{SKILL_NAME}/{rel}",
+        "description": description,
+        "mimeType": _SKILL_MIME.get(ext, "text/plain"),
+    }
+
+
+def _resolve_skill_uri(uri):
+    """Map a stride://skill/<relpath> URI to a file inside SKILL_DIR, or None.
+
+    Rejects anything outside the skill directory (path-traversal safe) and any URI that
+    does not resolve to an existing file."""
+    if not isinstance(uri, str) or not uri.startswith(SKILL_URI_PREFIX):
+        return None
+    rel = uri[len(SKILL_URI_PREFIX):]
+    if not rel:
+        return None
+    base = SKILL_DIR.resolve()
+    target = (base / rel).resolve()
+    try:
+        target.relative_to(base)
+    except ValueError:
+        return None  # traversal outside the skill directory
+    return target if target.is_file() else None
 
 # Simplified tool implementations for Vercel deployment
 # Note: These provide framework and guidance for LLM client analysis
@@ -776,10 +841,11 @@ def generate_threat_report(args: Dict[str, Any]) -> str:
     guidance for the client's model to fill in from the threat model, scores,
     mitigations, and attack trees.
 
-    NOTE: This skeleton is a parallel copy of the report house style that now lives
-    canonically in skills/stride-threat-modelling/references/report-format.md. It is
-    kept here for MCP clients without Agent Skills support. Keep the two in sync; the
-    skill is authoritative where available.
+    NOTE: This runtime scaffold mirrors the report house style defined canonically in
+    skills/stride-threat-modelling/references/report-format.md, which is now also served
+    over MCP as a resource (stride://skill/references/report-format.md) for clients without
+    native Agent Skills support. The resource is authoritative; if you change the section
+    structure here, update report-format.md to match.
 
     CRITICAL: This function MUST return a string (the markdown report), not a dict.
     The MCP handler expects content[0].text to be a string.
@@ -1636,6 +1702,49 @@ def handle_mcp_request(body: dict) -> dict:
                 "ttlMs": CACHE_TTL_MS,
                 "cacheScope": CACHE_SCOPE,
                 "_meta": {_META_SERVER_INFO: SERVER_INFO}
+            },
+            "id": request_id
+        }
+
+    # Handle resources/list — the companion Agent Skill's files, served over MCP so
+    # clients without native Agent Skills support can still fetch the canonical guidance.
+    elif method == 'resources/list':
+        resources = [_skill_resource_descriptor(rel) for rel in _skill_files()]
+        return {
+            "jsonrpc": "2.0",
+            "result": {"resources": resources, "ttlMs": CACHE_TTL_MS, "cacheScope": CACHE_SCOPE},
+            "id": request_id
+        }
+
+    # Handle resources/read — return the contents of a single skill file by URI.
+    elif method == 'resources/read':
+        uri = params.get('uri')
+        target = _resolve_skill_uri(uri)
+        if target is None:
+            return {
+                "jsonrpc": "2.0",
+                "error": {"code": -32602, "message": f"Unknown resource URI: {uri}"},
+                "id": request_id
+            }
+        try:
+            text = target.read_text(encoding='utf-8')
+        except Exception as e:
+            error_id, sanitized_message = sanitize_error(e, f"Reading resource: {uri}")
+            return {
+                "jsonrpc": "2.0",
+                "error": {"code": ERROR_CODES['INTERNAL_ERROR'], "message": sanitized_message},
+                "id": request_id
+            }
+        return {
+            "jsonrpc": "2.0",
+            "result": {
+                "contents": [{
+                    "uri": uri,
+                    "mimeType": _SKILL_MIME.get(target.suffix.lower(), "text/plain"),
+                    "text": text
+                }],
+                "ttlMs": CACHE_TTL_MS,
+                "cacheScope": CACHE_SCOPE
             },
             "id": request_id
         }

@@ -70,7 +70,10 @@ If your client doesn't support plugins, install the two pieces separately:
    Claude Desktop config under [Configuration](#configuration)).
 2. **Add the companion skill** — copy `skills/stride-threat-modelling/` into your
    client's skills directory (for Claude Code, `~/.claude/skills/` for all projects or
-   `.claude/skills/` within a project).
+   `.claude/skills/` within a project). Clients that can't load Agent Skills but do speak
+   MCP can instead fetch the same skill files over the server's `resources/` API — the
+   skill (`SKILL.md`, `EXAMPLES.md`, and every `references/*.md`) is served under
+   `stride://skill/…` URIs, so the canonical guidance is available without copying files.
 
 ### Hosted MCP Server
 

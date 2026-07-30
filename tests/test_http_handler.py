@@ -897,3 +897,24 @@ class TestModernStatelessModel:
         h = _modern_post('no/such/method')
         assert h.status == 404
         assert h.body_json['error']['code'] == -32601
+
+    def test_modern_resources_list_ok(self):
+        h = _modern_post('resources/list')
+        assert h.status == 200
+        uris = [r['uri'] for r in h.body_json['result']['resources']]
+        assert 'stride://skill/SKILL.md' in uris
+
+    def test_modern_resources_read_ok_with_mcp_name(self):
+        # resources/read requires an Mcp-Name header mirroring params.uri; _modern_post
+        # derives it automatically from the uri field.
+        h = _modern_post('resources/read',
+                         params={'uri': 'stride://skill/references/report-format.md'})
+        assert h.status == 200
+        assert 'report' in h.body_json['result']['contents'][0]['text'].lower()
+
+    def test_modern_resources_read_mcp_name_mismatch_returns_32020(self):
+        h = _modern_post('resources/read',
+                         params={'uri': 'stride://skill/SKILL.md'},
+                         mcp_name_header='stride://skill/EXAMPLES.md')
+        assert h.status == 400
+        assert h.body_json['error']['code'] == -32020

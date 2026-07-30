@@ -157,6 +157,65 @@ class TestMCPToolsList:
             assert 'properties' in tool['inputSchema']
 
 
+class TestMCPResources:
+    """Tests for serving the companion Agent Skill over MCP resources."""
+
+    def test_resources_capability_advertised(self):
+        """initialize and server/discover both advertise the resources capability."""
+        init = handle_mcp_request({'jsonrpc': '2.0', 'method': 'initialize', 'id': 1})
+        assert 'resources' in init['result']['capabilities']
+        disc = handle_mcp_request({'jsonrpc': '2.0', 'method': 'server/discover', 'id': 1})
+        assert 'resources' in disc['result']['capabilities']
+
+    def test_resources_list_returns_skill_files(self):
+        response = handle_mcp_request({'jsonrpc': '2.0', 'method': 'resources/list', 'id': 1})
+        resources = response['result']['resources']
+        uris = [r['uri'] for r in resources]
+        # SKILL.md is the entry point and is listed first.
+        assert uris[0] == 'stride://skill/SKILL.md'
+        assert 'stride://skill/references/report-format.md' in uris
+        # Every descriptor carries the required fields.
+        for r in resources:
+            assert r['uri'].startswith('stride://skill/')
+            assert r['name'] and r['description'] and r['mimeType']
+        # List results carry the cache hints.
+        assert response['result']['ttlMs'] and response['result']['cacheScope'] == 'public'
+
+    def test_resources_read_returns_file_contents(self):
+        response = handle_mcp_request({
+            'jsonrpc': '2.0', 'method': 'resources/read', 'id': 2,
+            'params': {'uri': 'stride://skill/SKILL.md'}
+        })
+        contents = response['result']['contents']
+        assert contents[0]['uri'] == 'stride://skill/SKILL.md'
+        assert contents[0]['mimeType'] == 'text/markdown'
+        assert 'stride' in contents[0]['text'].lower()
+
+    def test_resources_read_unknown_uri_errors(self):
+        response = handle_mcp_request({
+            'jsonrpc': '2.0', 'method': 'resources/read', 'id': 3,
+            'params': {'uri': 'stride://skill/does-not-exist.md'}
+        })
+        assert 'error' in response
+        assert response['error']['code'] == -32602
+
+    def test_resources_read_rejects_path_traversal(self):
+        response = handle_mcp_request({
+            'jsonrpc': '2.0', 'method': 'resources/read', 'id': 4,
+            'params': {'uri': 'stride://skill/../../api/index.py'}
+        })
+        assert 'error' in response
+        assert response['error']['code'] == -32602
+
+    def test_resources_read_rejects_foreign_scheme(self):
+        response = handle_mcp_request({
+            'jsonrpc': '2.0', 'method': 'resources/read', 'id': 5,
+            'params': {'uri': 'file:///etc/passwd'}
+        })
+        assert 'error' in response
+        assert response['error']['code'] == -32602
+
+
 class TestMCPToolsCall:
     """Tests for MCP tools/call method."""
 
