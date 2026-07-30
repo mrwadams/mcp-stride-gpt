@@ -31,6 +31,52 @@ PAYLOAD_LIMITS = {
     'MAX_STRING_LENGTH': 500_000     # Maximum string length (500KB - detailed descriptions)
 }
 
+# MCP protocol revisions this server supports, newest first (spec: modelcontextprotocol.io).
+# `initialize` honours the client's requested version when we support it, else offers the
+# latest, per the MCP lifecycle spec.
+SUPPORTED_PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26"]
+LATEST_PROTOCOL_VERSION = SUPPORTED_PROTOCOL_VERSIONS[0]
+
+# Streamable HTTP: Origin allow-list for DNS-rebinding protection (the transport spec
+# requires validating Origin and returning 403 on an invalid one). Requests with no Origin
+# header (native, non-browser MCP clients) are always allowed. Extend via the
+# ALLOWED_ORIGINS env var (comma-separated).
+_DEFAULT_ALLOWED_ORIGINS = {
+    "https://mcp.stridegpt.ai",
+    "https://stridegpt.ai",
+    "https://www.stridegpt.ai",
+    "https://claude.ai",
+    "https://www.claude.ai",
+    "https://playground.ai.cloudflare.com",  # Cloudflare AI Playground (browser MCP client)
+}
+
+
+def _origin_allowed(origin: str) -> bool:
+    """Return True if the request should be served. Absent Origin -> True (non-browser
+    MCP clients send none); a present Origin must match the allow-list, with localhost
+    permitted on any port for the MCP Inspector and local development."""
+    if not origin:
+        return True
+    allowed = set(_DEFAULT_ALLOWED_ORIGINS)
+    for extra in os.environ.get("ALLOWED_ORIGINS", "").split(","):
+        extra = extra.strip()
+        if extra:
+            allowed.add(extra)
+    if origin in allowed:
+        return True
+    for prefix in ("http://localhost", "http://127.0.0.1"):
+        if origin == prefix or origin.startswith(prefix + ":"):
+            return True
+    return False
+
+
+# Cache hints for the CacheableResult interface (MCP 2026-07-28, SEP-2549). List/read
+# results carry ttlMs (how long a client may reuse the response, in ms) and cacheScope
+# ("public" so shared intermediaries may cache it — the tool catalogue is static and
+# carries no per-client data). The fields are additive: older clients ignore them.
+CACHE_SCOPE = "public"
+CACHE_TTL_MS = 3_600_000  # tools/list is a static catalogue; 1 hour is safe
+
 # Simplified tool implementations for Vercel deployment
 # Note: These provide framework and guidance for LLM client analysis
 
@@ -1473,6 +1519,16 @@ Don't aim for perfect information - aim for sufficient information to identify t
 
     return base_framework
 
+def _with_result_type(response: dict) -> dict:
+    """Stamp the required `resultType` on successful results (MCP 2026-07-28, SEP-2322).
+    Ordinary results are "complete"; a handler returning an MRTR interim result may set
+    "input_required" itself, which we leave untouched. Error responses carry no `result`
+    and are left alone. Additive — older clients ignore the field."""
+    result = response.get("result")
+    if isinstance(result, dict) and "resultType" not in result:
+        result["resultType"] = "complete"
+    return response
+
 def handle_mcp_request(body: dict) -> dict:
     """Handle MCP JSON-RPC requests using the improved MCP server"""
     
@@ -1483,10 +1539,18 @@ def handle_mcp_request(body: dict) -> dict:
     
     # Handle initialize
     if method == 'initialize':
+        # Version negotiation: honour the client's requested version if we support it,
+        # otherwise offer our latest (MCP lifecycle spec).
+        requested_version = params.get('protocolVersion')
+        negotiated_version = (
+            requested_version
+            if requested_version in SUPPORTED_PROTOCOL_VERSIONS
+            else LATEST_PROTOCOL_VERSION
+        )
         return {
             "jsonrpc": "2.0",
             "result": {
-                "protocolVersion": "2025-03-26",
+                "protocolVersion": negotiated_version,
                 "capabilities": {
                     "tools": {"listChanged": False}
                 },
@@ -1749,10 +1813,10 @@ def handle_mcp_request(body: dict) -> dict:
         ]
         return {
             "jsonrpc": "2.0",
-            "result": {"tools": tools},
+            "result": {"tools": tools, "ttlMs": CACHE_TTL_MS, "cacheScope": CACHE_SCOPE},
             "id": request_id
         }
-    
+
     # Handle tools/call - actual implementation
     elif method == 'tools/call':
         tool_name = params.get('name')
@@ -1912,6 +1976,24 @@ def handle_mcp_request(body: dict) -> dict:
 
 
 class handler(BaseHTTPRequestHandler):
+    def _origin_ok(self):
+        """Validate the Origin header (DNS-rebinding protection). If invalid, emit a
+        403 with a JSON-RPC error (no id) and return False; otherwise return True."""
+        if _origin_allowed(self.headers.get('Origin')):
+            return True
+        self.send_response(403)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.send_header('X-Frame-Options', 'DENY')
+        self.send_header('X-XSS-Protection', '1; mode=block')
+        self.end_headers()
+        self.wfile.write(json.dumps({
+            "jsonrpc": "2.0",
+            "error": {"code": -32600, "message": "Forbidden: invalid Origin"},
+            "id": None
+        }).encode())
+        return False
+
     def do_OPTIONS(self):
         self.send_response(200)
         self.send_header('Access-Control-Allow-Origin', '*')
@@ -1923,6 +2005,8 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
         
     def do_GET(self):
+        if not self._origin_ok():
+            return
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Access-Control-Allow-Origin', '*')
@@ -1953,6 +2037,9 @@ class handler(BaseHTTPRequestHandler):
         
     def do_POST(self):
         try:
+            if not self._origin_ok():
+                return
+
             content_length = int(self.headers.get('Content-Length', 0))
 
             # Validate payload size before reading
@@ -2000,9 +2087,26 @@ class handler(BaseHTTPRequestHandler):
                     "id": body.get('id')
                 })
                 return
+
+            # Validate the MCP-Protocol-Version header. Per the transport spec the client
+            # sends this on all requests after initialization; if it is present but
+            # unsupported the server responds 400. An absent header is tolerated (spec says
+            # assume 2025-03-26), and `initialize` itself carries no header.
+            proto_header = self.headers.get('MCP-Protocol-Version')
+            if proto_header is not None and proto_header not in SUPPORTED_PROTOCOL_VERSIONS:
+                self.send_error_response(400, {
+                    "jsonrpc": "2.0",
+                    "error": {
+                        "code": -32600,
+                        "message": f"Unsupported MCP-Protocol-Version: {proto_header}. "
+                                   f"Supported: {', '.join(SUPPORTED_PROTOCOL_VERSIONS)}"
+                    },
+                    "id": body.get('id')
+                })
+                return
             
             # Handle MCP request using our improved server
-            response = handle_mcp_request(body)
+            response = _with_result_type(handle_mcp_request(body))
             
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
