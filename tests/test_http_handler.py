@@ -11,11 +11,20 @@ import pytest
 import sys
 import os
 import json
+import io
+from email.message import Message
 
 # Add api directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'api'))
 
-from index import handler, handle_mcp_request, validate_json_complexity, PAYLOAD_LIMITS, sanitize_error
+from index import (
+    handler,
+    handle_mcp_request,
+    validate_json_complexity,
+    PAYLOAD_LIMITS,
+    sanitize_error,
+    SUPPORTED_PROTOCOL_VERSIONS,
+)
 
 
 class TestMCPIntegration:
@@ -604,3 +613,157 @@ class TestErrorSanitization:
             assert "sensitive operation context" not in sanitized_message
             # Only generic message should be present
             assert "An internal error occurred" in sanitized_message
+
+
+class _CapturingHandler(handler):
+    """Drive the Vercel `handler`'s do_* methods without a real socket.
+
+    ``BaseHTTPRequestHandler`` normally services a socket connection in ``__init__``; this
+    subclass replaces that with a plain constructor and captures the response status,
+    headers, and body into attributes so the do_GET/do_POST/do_OPTIONS paths — Origin
+    validation, payload-size limits, and the MCP-Protocol-Version header check — can be
+    asserted directly. Headers use ``email.message.Message`` so lookups are
+    case-insensitive, matching a real HTTP request.
+    """
+
+    def __init__(self, body=b'', headers=None):
+        # Deliberately do NOT call super().__init__ — it would try to read from a socket.
+        self.status = None
+        self.sent_headers = []
+        self.wfile = io.BytesIO()
+        msg = Message()
+        for key, value in (headers or {}).items():
+            msg[key] = str(value)
+        # Default Content-Length to the real body length unless the caller set it (so a
+        # test can supply an oversized length without allocating an oversized body).
+        if body and msg.get('Content-Length') is None:
+            msg['Content-Length'] = str(len(body))
+        self.headers = msg
+        self.rfile = io.BytesIO(body)
+
+    # Capture the response instead of writing an HTTP status line to a socket.
+    def send_response(self, code, message=None):
+        self.status = code
+
+    def send_header(self, key, value):
+        self.sent_headers.append((key, value))
+
+    def end_headers(self):
+        pass
+
+    def log_message(self, *args, **kwargs):  # silence BaseHTTPRequestHandler logging
+        pass
+
+    @property
+    def body_json(self):
+        raw = self.wfile.getvalue()
+        return json.loads(raw.decode()) if raw else None
+
+    def header_value(self, name):
+        for key, value in self.sent_headers:
+            if key.lower() == name.lower():
+                return value
+        return None
+
+
+def _post(body_obj, origin='https://claude.ai', extra_headers=None):
+    """Build and run a POST through the handler; returns the _CapturingHandler."""
+    body = json.dumps(body_obj).encode() if isinstance(body_obj, (dict, list)) else body_obj
+    headers = {}
+    if origin is not None:
+        headers['Origin'] = origin
+    if extra_headers:
+        headers.update(extra_headers)
+    h = _CapturingHandler(body=body, headers=headers)
+    h.do_POST()
+    return h
+
+
+class TestHttpHandlerOrigin:
+    """Origin allow-list (DNS-rebinding protection) on the HTTP handler."""
+
+    def test_allowed_origin_passes(self):
+        h = _post({'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'}, origin='https://claude.ai')
+        assert h.status == 200
+        assert 'tools' in h.body_json['result']
+
+    def test_absent_origin_allowed(self):
+        # Native (non-browser) MCP clients send no Origin header.
+        h = _post({'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'}, origin=None)
+        assert h.status == 200
+
+    def test_localhost_origin_allowed(self):
+        h = _post({'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'},
+                  origin='http://localhost:6274')
+        assert h.status == 200
+
+    def test_disallowed_origin_forbidden(self):
+        h = _post({'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'},
+                  origin='https://evil.example')
+        assert h.status == 403
+        assert 'Origin' in h.body_json['error']['message']
+
+    def test_get_disallowed_origin_forbidden(self):
+        h = _CapturingHandler(headers={'Origin': 'https://evil.example'})
+        h.do_GET()
+        assert h.status == 403
+
+    def test_get_descriptor_served_for_allowed_origin(self):
+        h = _CapturingHandler(headers={})  # no Origin -> allowed
+        h.do_GET()
+        assert h.status == 200
+        assert h.body_json['name'] == 'STRIDE GPT MCP Server'
+
+
+class TestHttpHandlerProtocolVersion:
+    """MCP-Protocol-Version header validation on POST."""
+
+    def test_supported_version_passes(self):
+        for version in SUPPORTED_PROTOCOL_VERSIONS:
+            h = _post({'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'},
+                      extra_headers={'MCP-Protocol-Version': version})
+            assert h.status == 200, f'version {version} should be accepted'
+
+    def test_absent_version_tolerated(self):
+        h = _post({'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'})
+        assert h.status == 200
+
+    def test_unsupported_version_rejected(self):
+        h = _post({'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'},
+                  extra_headers={'MCP-Protocol-Version': '2026-07-28'})
+        assert h.status == 400
+        assert 'Unsupported MCP-Protocol-Version' in h.body_json['error']['message']
+        assert h.body_json['id'] == 1
+
+    def test_garbage_version_rejected(self):
+        h = _post({'jsonrpc': '2.0', 'id': 7, 'method': 'tools/list'},
+                  extra_headers={'MCP-Protocol-Version': 'not-a-version'})
+        assert h.status == 400
+        assert h.body_json['id'] == 7
+
+
+class TestHttpHandlerRequestValidation:
+    """Payload-size, parse, and JSON-RPC validation on the POST path."""
+
+    def test_payload_too_large_rejected(self):
+        # Oversized Content-Length is rejected before the body is read.
+        oversize = PAYLOAD_LIMITS['MAX_PAYLOAD_SIZE'] + 1
+        h = _CapturingHandler(body=b'{}', headers={'Origin': 'https://claude.ai',
+                                                   'Content-Length': str(oversize)})
+        h.do_POST()
+        assert h.status == 413
+
+    def test_parse_error_rejected(self):
+        h = _post(b'{ not valid json', origin='https://claude.ai')
+        assert h.status == 400
+        assert h.body_json['error']['code'] == -32700
+
+    def test_missing_method_rejected(self):
+        h = _post({'jsonrpc': '2.0', 'id': 1})
+        assert h.status == 400
+        assert h.body_json['error']['code'] == -32600
+
+    def test_options_preflight_ok(self):
+        h = _CapturingHandler(headers={})
+        h.do_OPTIONS()
+        assert h.status == 200

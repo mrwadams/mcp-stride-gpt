@@ -35,16 +35,29 @@ class TestMCPInitialize:
         assert 'result' in response
         assert response['id'] == 1
 
-    def test_initialize_protocol_version(self):
-        """Test that protocol version is correct."""
-        request = {
-            'jsonrpc': '2.0',
-            'method': 'initialize',
-            'id': 1
-        }
-        response = handle_mcp_request(request)
+    def test_initialize_negotiates_protocol_version(self):
+        """Version negotiation: echo a supported version the client requests, and offer
+        the latest supported version when the client requests none or an unsupported one."""
+        from api.index import SUPPORTED_PROTOCOL_VERSIONS, LATEST_PROTOCOL_VERSION
 
-        assert response['result']['protocolVersion'] == '2025-03-26'
+        # No protocolVersion requested -> server offers its latest.
+        response = handle_mcp_request({'jsonrpc': '2.0', 'method': 'initialize', 'id': 1})
+        assert response['result']['protocolVersion'] == LATEST_PROTOCOL_VERSION
+
+        # A supported version requested -> echoed back unchanged.
+        for version in SUPPORTED_PROTOCOL_VERSIONS:
+            response = handle_mcp_request({
+                'jsonrpc': '2.0', 'method': 'initialize', 'id': 1,
+                'params': {'protocolVersion': version}
+            })
+            assert response['result']['protocolVersion'] == version
+
+        # An unsupported version requested -> server falls back to its latest.
+        response = handle_mcp_request({
+            'jsonrpc': '2.0', 'method': 'initialize', 'id': 1,
+            'params': {'protocolVersion': '2099-01-01'}
+        })
+        assert response['result']['protocolVersion'] == LATEST_PROTOCOL_VERSION
 
     def test_initialize_capabilities(self):
         """Test that capabilities are declared."""
