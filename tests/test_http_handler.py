@@ -24,7 +24,18 @@ from index import (
     PAYLOAD_LIMITS,
     sanitize_error,
     SUPPORTED_PROTOCOL_VERSIONS,
+    LEGACY_PROTOCOL_VERSIONS,
+    MODERN_PROTOCOL_VERSIONS,
+    LATEST_LEGACY_VERSION,
+    _META_PROTOCOL_VERSION,
+    _META_CLIENT_CAPABILITIES,
+    _META_SERVER_INFO,
 )
+
+MODERN_VERSION = MODERN_PROTOCOL_VERSIONS[0]
+
+# Methods whose modern HTTP request must carry an Mcp-Name header mirroring a body field.
+_MCP_NAME_FIELD = {'tools/call': 'name', 'resources/read': 'uri', 'prompts/get': 'name'}
 
 
 class TestMCPIntegration:
@@ -679,6 +690,37 @@ def _post(body_obj, origin='https://claude.ai', extra_headers=None):
     return h
 
 
+def _modern_post(method, params=None, request_id=1, version=MODERN_VERSION,
+                 include_protocol_meta=True, include_caps_meta=True,
+                 protocol_header=True, mcp_method_header=True, mcp_name_header='auto',
+                 origin='https://claude.ai'):
+    """Build and POST a request in the modern (2026-07-28) stateless shape.
+
+    Defaults produce a fully valid modern request; individual pieces can be omitted or
+    corrupted via the flags to exercise the validation paths."""
+    p = dict(params or {})
+    meta = {}
+    if include_protocol_meta:
+        meta[_META_PROTOCOL_VERSION] = version
+    if include_caps_meta:
+        meta[_META_CLIENT_CAPABILITIES] = {}
+    p['_meta'] = meta
+    body = {'jsonrpc': '2.0', 'id': request_id, 'method': method, 'params': p}
+
+    headers = {}
+    if protocol_header:
+        headers['MCP-Protocol-Version'] = version
+    if mcp_method_header:
+        headers['Mcp-Method'] = method
+    if mcp_name_header == 'auto':
+        field = _MCP_NAME_FIELD.get(method)
+        if field is not None and field in p:
+            headers['Mcp-Name'] = p[field]
+    elif mcp_name_header is not None:
+        headers['Mcp-Name'] = mcp_name_header
+    return _post(body, origin=origin, extra_headers=headers)
+
+
 class TestHttpHandlerOrigin:
     """Origin allow-list (DNS-rebinding protection) on the HTTP handler."""
 
@@ -718,8 +760,9 @@ class TestHttpHandlerOrigin:
 class TestHttpHandlerProtocolVersion:
     """MCP-Protocol-Version header validation on POST."""
 
-    def test_supported_version_passes(self):
-        for version in SUPPORTED_PROTOCOL_VERSIONS:
+    def test_supported_legacy_version_passes(self):
+        # A bare legacy request (header only, no modern _meta) stays on the legacy path.
+        for version in LEGACY_PROTOCOL_VERSIONS:
             h = _post({'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'},
                       extra_headers={'MCP-Protocol-Version': version})
             assert h.status == 200, f'version {version} should be accepted'
@@ -729,8 +772,9 @@ class TestHttpHandlerProtocolVersion:
         assert h.status == 200
 
     def test_unsupported_version_rejected(self):
+        # A version we do not support, sent legacy-style, is rejected on the legacy path.
         h = _post({'jsonrpc': '2.0', 'id': 1, 'method': 'tools/list'},
-                  extra_headers={'MCP-Protocol-Version': '2026-07-28'})
+                  extra_headers={'MCP-Protocol-Version': '2099-01-01'})
         assert h.status == 400
         assert 'Unsupported MCP-Protocol-Version' in h.body_json['error']['message']
         assert h.body_json['id'] == 1
@@ -767,3 +811,89 @@ class TestHttpHandlerRequestValidation:
         h = _CapturingHandler(headers={})
         h.do_OPTIONS()
         assert h.status == 200
+
+
+class TestModernStatelessModel:
+    """The modern (2026-07-28) per-request stateless model: server/discover, per-request
+    `_meta`, mirrored header validation, and the reserved error codes."""
+
+    def test_server_discover(self):
+        h = _modern_post('server/discover')
+        assert h.status == 200
+        result = h.body_json['result']
+        assert result['resultType'] == 'complete'
+        assert result['supportedVersions'] == SUPPORTED_PROTOCOL_VERSIONS
+        assert MODERN_VERSION in result['supportedVersions']
+        assert 'capabilities' in result
+        assert result['ttlMs'] and result['cacheScope'] == 'public'
+        assert result['_meta'][_META_SERVER_INFO]['name'] == 'STRIDE GPT MCP Server'
+
+    def test_modern_tools_list_ok_with_server_meta(self):
+        h = _modern_post('tools/list')
+        assert h.status == 200
+        result = h.body_json['result']
+        assert 'tools' in result
+        assert result['resultType'] == 'complete'
+        assert result['ttlMs'] and result['cacheScope'] == 'public'
+        assert result['_meta'][_META_SERVER_INFO]['name'] == 'STRIDE GPT MCP Server'
+
+    def test_modern_tools_call_ok_with_mcp_name(self):
+        h = _modern_post('tools/call',
+                         params={'name': 'get_stride_threat_framework',
+                                 'arguments': {'app_description': 'Test app'}})
+        assert h.status == 200
+        assert 'content' in h.body_json['result']
+
+    def test_missing_protocol_version_meta_is_invalid_params(self):
+        # Header declares modern, but _meta omits the required protocolVersion field.
+        h = _modern_post('tools/list', include_protocol_meta=False)
+        assert h.status == 400
+        assert h.body_json['error']['code'] == -32602
+
+    def test_missing_client_capabilities_meta_is_invalid_params(self):
+        h = _modern_post('tools/list', include_caps_meta=False)
+        assert h.status == 400
+        assert h.body_json['error']['code'] == -32602
+
+    def test_unsupported_modern_version_returns_32022(self):
+        h = _modern_post('tools/list', version='2027-01-01')
+        assert h.status == 400
+        err = h.body_json['error']
+        assert err['code'] == -32022
+        assert err['data']['requested'] == '2027-01-01'
+        assert err['data']['supported'] == SUPPORTED_PROTOCOL_VERSIONS
+
+    def test_protocol_header_mismatch_returns_32020(self):
+        # _meta says 2026-07-28 but the header is absent -> HeaderMismatch.
+        h = _modern_post('tools/list', protocol_header=False)
+        assert h.status == 400
+        assert h.body_json['error']['code'] == -32020
+
+    def test_mcp_method_header_mismatch_returns_32020(self):
+        h = _modern_post('tools/list', mcp_method_header=False)
+        assert h.status == 400
+        assert h.body_json['error']['code'] == -32020
+
+    def test_mcp_name_header_mismatch_returns_32020(self):
+        # tools/call requires an Mcp-Name header matching params.name.
+        h = _modern_post('tools/call',
+                         params={'name': 'get_stride_threat_framework',
+                                 'arguments': {'app_description': 'Test app'}},
+                         mcp_name_header='wrong_name')
+        assert h.status == 400
+        assert h.body_json['error']['code'] == -32020
+
+    def test_mcp_name_base64_sentinel_decoded(self):
+        # An Mcp-Name carried in the Base64 sentinel form is decoded before comparison.
+        import base64
+        encoded = '=?base64?' + base64.b64encode(b'get_stride_threat_framework').decode() + '?='
+        h = _modern_post('tools/call',
+                         params={'name': 'get_stride_threat_framework',
+                                 'arguments': {'app_description': 'Test app'}},
+                         mcp_name_header=encoded)
+        assert h.status == 200
+
+    def test_modern_unknown_method_is_404(self):
+        h = _modern_post('no/such/method')
+        assert h.status == 404
+        assert h.body_json['error']['code'] == -32601

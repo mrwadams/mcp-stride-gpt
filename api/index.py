@@ -32,10 +32,29 @@ PAYLOAD_LIMITS = {
 }
 
 # MCP protocol revisions this server supports, newest first (spec: modelcontextprotocol.io).
-# `initialize` honours the client's requested version when we support it, else offers the
-# latest, per the MCP lifecycle spec.
-SUPPORTED_PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26"]
-LATEST_PROTOCOL_VERSION = SUPPORTED_PROTOCOL_VERSIONS[0]
+# The server is dual-era: it answers the legacy `initialize` handshake (2025-11-25 and
+# earlier) AND the modern per-request stateless model (2026-07-28), where a client carries
+# its protocol version and capabilities in each request's `_meta` and calls `server/discover`
+# instead of `initialize`. `initialize` negotiates only among the legacy versions; a modern
+# client never sends it.
+LEGACY_PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26"]
+MODERN_PROTOCOL_VERSIONS = ["2026-07-28"]
+SUPPORTED_PROTOCOL_VERSIONS = MODERN_PROTOCOL_VERSIONS + LEGACY_PROTOCOL_VERSIONS
+LATEST_PROTOCOL_VERSION = SUPPORTED_PROTOCOL_VERSIONS[0]   # newest overall (modern)
+LATEST_LEGACY_VERSION = LEGACY_PROTOCOL_VERSIONS[0]        # newest handshake version
+
+# Reserved `_meta` keys carrying the per-request protocol fields in the modern model
+# (MCP 2026-07-28, basic/index#meta). Clients put these in each request's params._meta;
+# servers echo their identity back in the result's _meta.
+_META_PROTOCOL_VERSION = "io.modelcontextprotocol/protocolVersion"
+_META_CLIENT_INFO = "io.modelcontextprotocol/clientInfo"
+_META_CLIENT_CAPABILITIES = "io.modelcontextprotocol/clientCapabilities"
+_META_SERVER_INFO = "io.modelcontextprotocol/serverInfo"
+
+# MCP-reserved JSON-RPC error codes (2026-07-28, range -32020..-32099).
+MCP_ERR_HEADER_MISMATCH = -32020
+MCP_ERR_MISSING_CLIENT_CAPABILITY = -32021
+MCP_ERR_UNSUPPORTED_PROTOCOL_VERSION = -32022
 
 # Streamable HTTP: Origin allow-list for DNS-rebinding protection (the transport spec
 # requires validating Origin and returning 403 on an invalid one). Requests with no Origin
@@ -76,6 +95,18 @@ def _origin_allowed(origin: str) -> bool:
 # carries no per-client data). The fields are additive: older clients ignore them.
 CACHE_SCOPE = "public"
 CACHE_TTL_MS = 3_600_000  # tools/list is a static catalogue; 1 hour is safe
+
+# Server identity and capabilities, shared by `initialize` (legacy) and `server/discover`
+# (modern) so both eras report the same thing.
+SERVER_INFO = {"name": "STRIDE GPT MCP Server", "version": "0.1.0"}
+SERVER_CAPABILITIES = {"tools": {"listChanged": False}}
+SERVER_INSTRUCTIONS = (
+    "STRIDE threat modelling framework provider. These tools return methodology, scoring "
+    "rubrics, and report templates for your own model to populate with real analysis — they "
+    "do not perform the analysis themselves. If your client supports Agent Skills, the "
+    "companion 'stride-threat-modelling' skill is the primary, richer path and runs "
+    "standalone; use these tools when it is not available."
+)
 
 # Simplified tool implementations for Vercel deployment
 # Note: These provide framework and guidance for LLM client analysis
@@ -1529,6 +1560,38 @@ def _with_result_type(response: dict) -> dict:
         result["resultType"] = "complete"
     return response
 
+
+def _with_server_meta(response: dict) -> dict:
+    """Attach the modern per-response server identity — `io.modelcontextprotocol/serverInfo`
+    inside the result's `_meta` — which the 2026-07-28 spec says servers SHOULD include on
+    every result. Successful results only; error responses are left alone."""
+    result = response.get("result")
+    if isinstance(result, dict):
+        meta = result.setdefault("_meta", {})
+        meta.setdefault(_META_SERVER_INFO, SERVER_INFO)
+    return response
+
+
+def _decode_mcp_header(value):
+    """Decode the Base64 sentinel form (`=?base64?...?=`) the Streamable HTTP transport
+    permits for Mcp-Name / Mcp-Param-* header values; pass other values through unchanged."""
+    if isinstance(value, str) and value.startswith("=?base64?") and value.endswith("?="):
+        import base64
+        try:
+            return base64.b64decode(value[len("=?base64?"):-2]).decode("utf-8")
+        except Exception:
+            return value
+    return value
+
+
+# Body field that supplies the required Mcp-Name header, per method (2026-07-28 transport).
+_MCP_NAME_SOURCE = {
+    "tools/call": "name",
+    "resources/read": "uri",
+    "prompts/get": "name",
+}
+
+
 def handle_mcp_request(body: dict) -> dict:
     """Handle MCP JSON-RPC requests using the improved MCP server"""
     
@@ -1537,32 +1600,46 @@ def handle_mcp_request(body: dict) -> dict:
     request_id = body.get('id')
     
     
-    # Handle initialize
+    # Handle initialize (legacy handshake). Modern clients use server/discover instead.
     if method == 'initialize':
-        # Version negotiation: honour the client's requested version if we support it,
-        # otherwise offer our latest (MCP lifecycle spec).
+        # Version negotiation: honour the client's requested version if it is a legacy
+        # version we support, otherwise offer our latest legacy version. `initialize` is a
+        # legacy-only handshake, so it never offers a modern (2026-07-28) version.
         requested_version = params.get('protocolVersion')
         negotiated_version = (
             requested_version
-            if requested_version in SUPPORTED_PROTOCOL_VERSIONS
-            else LATEST_PROTOCOL_VERSION
+            if requested_version in LEGACY_PROTOCOL_VERSIONS
+            else LATEST_LEGACY_VERSION
         )
         return {
             "jsonrpc": "2.0",
             "result": {
                 "protocolVersion": negotiated_version,
-                "capabilities": {
-                    "tools": {"listChanged": False}
-                },
-                "serverInfo": {
-                    "name": "STRIDE GPT MCP Server",
-                    "version": "0.1.0"
-                },
-                "instructions": "STRIDE threat modelling framework provider. These tools return methodology, scoring rubrics, and report templates for your own model to populate with real analysis — they do not perform the analysis themselves. If your client supports Agent Skills, the companion 'stride-threat-modelling' skill is the primary, richer path and runs standalone; use these tools when it is not available."
+                "capabilities": SERVER_CAPABILITIES,
+                "serverInfo": SERVER_INFO,
+                "instructions": SERVER_INSTRUCTIONS
             },
             "id": request_id
         }
-    
+
+    # Handle server/discover (modern stateless model, MCP 2026-07-28). Servers MUST
+    # implement it: report supported versions, capabilities and identity in one call. The
+    # result is cacheable and carries serverInfo in `_meta` per the spec.
+    elif method == 'server/discover':
+        return {
+            "jsonrpc": "2.0",
+            "result": {
+                "resultType": "complete",
+                "supportedVersions": SUPPORTED_PROTOCOL_VERSIONS,
+                "capabilities": SERVER_CAPABILITIES,
+                "instructions": SERVER_INSTRUCTIONS,
+                "ttlMs": CACHE_TTL_MS,
+                "cacheScope": CACHE_SCOPE,
+                "_meta": {_META_SERVER_INFO: SERVER_INFO}
+            },
+            "id": request_id
+        }
+
     # Handle tools/list
     elif method == 'tools/list':
         tools = [
@@ -1997,13 +2074,14 @@ class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
         self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Mcp-Session-Id')
+        self.send_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers',
+                         'Content-Type, Authorization, MCP-Protocol-Version, Mcp-Method, Mcp-Name')
         self.send_header('X-Content-Type-Options', 'nosniff')
         self.send_header('X-Frame-Options', 'DENY')
         self.send_header('X-XSS-Protection', '1; mode=block')
         self.end_headers()
-        
+
     def do_GET(self):
         if not self._origin_ok():
             return
@@ -2088,35 +2166,54 @@ class handler(BaseHTTPRequestHandler):
                 })
                 return
 
-            # Validate the MCP-Protocol-Version header. Per the transport spec the client
-            # sends this on all requests after initialization; if it is present but
-            # unsupported the server responds 400. An absent header is tolerated (spec says
-            # assume 2025-03-26), and `initialize` itself carries no header.
-            proto_header = self.headers.get('MCP-Protocol-Version')
-            if proto_header is not None and proto_header not in SUPPORTED_PROTOCOL_VERSIONS:
+            # Era detection. A request is served under the modern (2026-07-28) stateless
+            # model when it declares a modern protocol version in its `_meta` (the signal a
+            # modern client always sends) or via the MCP-Protocol-Version header.
+            # `initialize` is always legacy; everything else without those signals stays on
+            # the legacy path so existing 2025-era clients are unaffected.
+            method = body.get('method')
+            params = body.get('params') or {}
+            meta = params.get('_meta') or {}
+            header_version = self.headers.get('MCP-Protocol-Version')
+            meta_version = meta.get(_META_PROTOCOL_VERSION)
+            is_modern = method != 'initialize' and (
+                _META_PROTOCOL_VERSION in meta
+                or header_version in MODERN_PROTOCOL_VERSIONS
+            )
+
+            if is_modern:
+                error = self._validate_modern_request(
+                    body, method, params, meta, header_version, meta_version)
+                if error is not None:
+                    self.send_error_response(*error)
+                    return
+                response = _with_server_meta(_with_result_type(handle_mcp_request(body)))
+                # Modern transport: an unknown method is a 404 with a JSON-RPC -32601 body
+                # (distinguishing a modern endpoint from a legacy 404), not a 200-wrapped
+                # error.
+                status = 404 if (
+                    'error' in response and response['error'].get('code') == -32601
+                ) else 200
+                self._send_json(status, response)
+                return
+
+            # Legacy path: tolerate an absent MCP-Protocol-Version header (spec says assume
+            # 2025-03-26); reject a present-but-unsupported one.
+            if header_version is not None and header_version not in SUPPORTED_PROTOCOL_VERSIONS:
                 self.send_error_response(400, {
                     "jsonrpc": "2.0",
                     "error": {
                         "code": -32600,
-                        "message": f"Unsupported MCP-Protocol-Version: {proto_header}. "
+                        "message": f"Unsupported MCP-Protocol-Version: {header_version}. "
                                    f"Supported: {', '.join(SUPPORTED_PROTOCOL_VERSIONS)}"
                     },
                     "id": body.get('id')
                 })
                 return
-            
-            # Handle MCP request using our improved server
+
             response = _with_result_type(handle_mcp_request(body))
-            
-            self.send_response(200)
-            self.send_header('Content-Type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.send_header('X-Content-Type-Options', 'nosniff')
-            self.send_header('X-Frame-Options', 'DENY')
-            self.send_header('X-XSS-Protection', '1; mode=block')
-            self.end_headers()
-            self.wfile.write(json.dumps(response).encode())
-            
+            self._send_json(200, response)
+
         except Exception as e:
             error_id, sanitized_message = sanitize_error(e, "HTTP POST request handling")
             self.send_error_response(500, {
@@ -2125,6 +2222,69 @@ class handler(BaseHTTPRequestHandler):
                 "id": None
             })
     
+    def _rpc_error(self, request_id, code, message, data=None):
+        """Build a JSON-RPC error response body."""
+        error = {"code": code, "message": message}
+        if data is not None:
+            error["data"] = data
+        return {"jsonrpc": "2.0", "error": error, "id": request_id}
+
+    def _validate_modern_request(self, body, method, params, meta, header_version, meta_version):
+        """Validate a request served under the modern (2026-07-28) stateless model.
+
+        Returns None when the request is well-formed, otherwise a (http_status, error_body)
+        tuple ready for send_error_response. Enforces the required per-request `_meta`
+        protocol fields, protocol-version support, and the mirrored HTTP request headers
+        (MCP-Protocol-Version, Mcp-Method, Mcp-Name) that the transport requires."""
+        request_id = body.get('id')
+
+        # Required per-request `_meta` fields — missing -> Invalid params (-32602).
+        if meta_version is None:
+            return (400, self._rpc_error(
+                request_id, -32602,
+                f"Missing required _meta field: {_META_PROTOCOL_VERSION}"))
+        if _META_CLIENT_CAPABILITIES not in meta:
+            return (400, self._rpc_error(
+                request_id, -32602,
+                f"Missing required _meta field: {_META_CLIENT_CAPABILITIES}"))
+
+        # Protocol-version support -> UnsupportedProtocolVersion (-32022) with the list.
+        if meta_version not in SUPPORTED_PROTOCOL_VERSIONS:
+            return (400, self._rpc_error(
+                request_id, MCP_ERR_UNSUPPORTED_PROTOCOL_VERSION,
+                "Unsupported protocol version",
+                data={"supported": SUPPORTED_PROTOCOL_VERSIONS, "requested": meta_version}))
+
+        # Mirrored HTTP headers must be present and match the body -> HeaderMismatch (-32020).
+        if header_version is None or header_version != meta_version:
+            return (400, self._rpc_error(
+                request_id, MCP_ERR_HEADER_MISMATCH,
+                "Header mismatch: MCP-Protocol-Version header must be present and match "
+                "the request _meta protocolVersion"))
+        if self.headers.get('Mcp-Method') != method:
+            return (400, self._rpc_error(
+                request_id, MCP_ERR_HEADER_MISMATCH,
+                "Header mismatch: Mcp-Method header must be present and match the body method"))
+        name_field = _MCP_NAME_SOURCE.get(method)
+        if name_field is not None:
+            mcp_name = _decode_mcp_header(self.headers.get('Mcp-Name'))
+            if mcp_name is None or mcp_name != params.get(name_field):
+                return (400, self._rpc_error(
+                    request_id, MCP_ERR_HEADER_MISMATCH,
+                    f"Header mismatch: Mcp-Name header must be present and match params.{name_field}"))
+        return None
+
+    def _send_json(self, status_code, payload):
+        """Send a JSON body with the standard security headers."""
+        self.send_response(status_code)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('X-Content-Type-Options', 'nosniff')
+        self.send_header('X-Frame-Options', 'DENY')
+        self.send_header('X-XSS-Protection', '1; mode=block')
+        self.end_headers()
+        self.wfile.write(json.dumps(payload).encode())
+
     def send_error_response(self, status_code, error_data):
         self.send_response(status_code)
         self.send_header('Content-Type', 'application/json')

@@ -36,28 +36,30 @@ class TestMCPInitialize:
         assert response['id'] == 1
 
     def test_initialize_negotiates_protocol_version(self):
-        """Version negotiation: echo a supported version the client requests, and offer
-        the latest supported version when the client requests none or an unsupported one."""
-        from api.index import SUPPORTED_PROTOCOL_VERSIONS, LATEST_PROTOCOL_VERSION
+        """Version negotiation on the legacy handshake: echo a legacy version the client
+        requests, and offer the latest legacy version when the client requests none, an
+        unsupported one, or a modern one (initialize never negotiates up to modern)."""
+        from api.index import LEGACY_PROTOCOL_VERSIONS, LATEST_LEGACY_VERSION
 
-        # No protocolVersion requested -> server offers its latest.
+        # No protocolVersion requested -> server offers its latest legacy version.
         response = handle_mcp_request({'jsonrpc': '2.0', 'method': 'initialize', 'id': 1})
-        assert response['result']['protocolVersion'] == LATEST_PROTOCOL_VERSION
+        assert response['result']['protocolVersion'] == LATEST_LEGACY_VERSION
 
-        # A supported version requested -> echoed back unchanged.
-        for version in SUPPORTED_PROTOCOL_VERSIONS:
+        # A supported legacy version requested -> echoed back unchanged.
+        for version in LEGACY_PROTOCOL_VERSIONS:
             response = handle_mcp_request({
                 'jsonrpc': '2.0', 'method': 'initialize', 'id': 1,
                 'params': {'protocolVersion': version}
             })
             assert response['result']['protocolVersion'] == version
 
-        # An unsupported version requested -> server falls back to its latest.
-        response = handle_mcp_request({
-            'jsonrpc': '2.0', 'method': 'initialize', 'id': 1,
-            'params': {'protocolVersion': '2099-01-01'}
-        })
-        assert response['result']['protocolVersion'] == LATEST_PROTOCOL_VERSION
+        # An unsupported or modern version requested -> server falls back to latest legacy.
+        for requested in ('2099-01-01', '2026-07-28'):
+            response = handle_mcp_request({
+                'jsonrpc': '2.0', 'method': 'initialize', 'id': 1,
+                'params': {'protocolVersion': requested}
+            })
+            assert response['result']['protocolVersion'] == LATEST_LEGACY_VERSION
 
     def test_initialize_capabilities(self):
         """Test that capabilities are declared."""
