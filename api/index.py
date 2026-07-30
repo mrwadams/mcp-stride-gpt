@@ -859,6 +859,17 @@ def generate_threat_report(args: Dict[str, Any]) -> str:
     # Build the markdown report as a string
     report = "# STRIDE Threat Model Report\n\n"
 
+    # Point the client at the authoritative house-style spec, served over MCP as a
+    # resource. HTML comment => invisible in the rendered report but visible to the
+    # model assembling it, so a skill-unaware client can fetch the richer format
+    # instead of settling for this skeleton. See report-format.md drift note above.
+    report += (
+        "<!-- Authoritative house style for this report is served over MCP as the resource\n"
+        "     `stride://skill/references/report-format.md` (call resources/read). If your client\n"
+        "     can fetch it, follow that format; this skeleton mirrors it. Populate every section\n"
+        "     with specific analysis and remove these guidance placeholders before delivering. -->\n\n"
+    )
+
     if 'executive_summary' in include_sections:
         report += """## Executive Summary
 
@@ -984,7 +995,7 @@ def generate_threat_report(args: Dict[str, Any]) -> str:
 **Threat Modeling Framework:** STRIDE
 **Risk Scoring Method:** DREAD
 
-*This report was generated using the STRIDE GPT MCP Server threat modeling framework. The LLM client should populate each section with specific analysis based on the provided threat model data.*
+*This report was generated using the STRIDE GPT MCP Server threat modeling framework. The LLM client should populate each section with specific analysis based on the provided threat model data. Authoritative house style: `stride://skill/references/report-format.md` (available via resources/read).*
 """.format(threat_count=len(threat_model) if isinstance(threat_model, list) else 0)
 
     return report
@@ -1658,6 +1669,38 @@ _MCP_NAME_SOURCE = {
 }
 
 
+# Keys in a tool response that only echo the caller's own input back to it, or
+# ship large static reference blocks the client already received once. They are
+# useful for humans eyeballing a single call but pure token overhead when an
+# agent drives the workflow across many calls. verbosity="brief" strips them;
+# the rubric/framework, analysis_guidance, and next_steps are always retained.
+_VERBOSE_ECHO_KEYS = (
+    "threats",             # calculate_threat_risk_scores input echo
+    "threat_context",      # mitigations / attack-trees / security-tests input echo
+    "threat_model",        # validate_threat_coverage input echo
+    "app_context",         # validate_threat_coverage input echo
+    "application_context", # get_stride_threat_framework input echo
+    "scoring_guidance",    # calculate_threat_risk_scores input echo
+    "scoring_examples",    # calculate_threat_risk_scores large worked-example block
+)
+
+
+def _apply_verbosity(result: dict, args: dict) -> dict:
+    """Optionally trim echoed inputs / large example blocks from a tool result.
+
+    verbosity="full" (the default) returns the response unchanged, preserving
+    backward compatibility for existing clients. verbosity="brief" drops the
+    keys in ``_VERBOSE_ECHO_KEYS`` — the parts that merely echo the caller's
+    input or repeat large static reference material — keeping the framework,
+    analysis_guidance, and next_steps. Non-dict results pass through untouched.
+    """
+    if not isinstance(result, dict):
+        return result
+    if str(args.get("verbosity", "full")).lower() != "brief":
+        return result
+    return {k: v for k, v in result.items() if k not in _VERBOSE_ECHO_KEYS}
+
+
 def handle_mcp_request(body: dict) -> dict:
     """Handle MCP JSON-RPC requests using the improved MCP server"""
     
@@ -1783,6 +1826,12 @@ def handle_mcp_request(body: dict) -> dict:
                             "items": {"type": "string"},
                             "description": "Types of sensitive data handled",
                             "default": ["User Data"]
+                        },
+                        "verbosity": {
+                            "type": "string",
+                            "description": "Response detail. 'full' (default) includes the framework plus an echo of your input; 'brief' omits the echoed input to save tokens.",
+                            "enum": ["full", "brief"],
+                            "default": "full"
                         }
                     },
                     "required": ["app_description"]
@@ -1806,6 +1855,12 @@ def handle_mcp_request(body: dict) -> dict:
                             "type": "string",
                             "description": "Filter by priority",
                             "default": "all"
+                        },
+                        "verbosity": {
+                            "type": "string",
+                            "description": "Response detail. 'full' (default) includes the framework plus an echo of your input; 'brief' omits the echoed input to save tokens.",
+                            "enum": ["full", "brief"],
+                            "default": "full"
                         }
                     },
                     "required": ["threats"]
@@ -1834,6 +1889,12 @@ def handle_mcp_request(body: dict) -> dict:
                             "type": "string",
                             "description": "Output format",
                             "default": "both"
+                        },
+                        "verbosity": {
+                            "type": "string",
+                            "description": "Response detail. 'full' (default) includes the framework plus an echo of your input; 'brief' omits the echoed input to save tokens.",
+                            "enum": ["full", "brief"],
+                            "default": "full"
                         }
                     },
                     "required": ["threats"]
@@ -1857,6 +1918,12 @@ def handle_mcp_request(body: dict) -> dict:
                             "type": "object",
                             "additionalProperties": True,
                             "description": "Optional guidance for scoring adjustments"
+                        },
+                        "verbosity": {
+                            "type": "string",
+                            "description": "Response detail. 'full' (default) includes the DREAD rubric plus an echo of your input and worked scoring examples; 'brief' omits the echoed input and the examples to save tokens.",
+                            "enum": ["full", "brief"],
+                            "default": "full"
                         }
                     },
                     "required": ["threats"]
@@ -1885,6 +1952,12 @@ def handle_mcp_request(body: dict) -> dict:
                             "type": "string",
                             "description": "Output format",
                             "default": "gherkin"
+                        },
+                        "verbosity": {
+                            "type": "string",
+                            "description": "Response detail. 'full' (default) includes the framework plus an echo of your input; 'brief' omits the echoed input to save tokens.",
+                            "enum": ["full", "brief"],
+                            "default": "full"
                         }
                     },
                     "required": ["threats"]
@@ -1940,7 +2013,7 @@ def handle_mcp_request(body: dict) -> dict:
             },
             {
                 "name": "validate_threat_coverage",
-                "description": "Validate STRIDE coverage completeness and suggest threat model enhancements",
+                "description": "Return a coverage-validation checklist and common-gap prompts for your model to audit the threat model's completeness against. The server supplies the checklist; your model finds the gaps.",
                 "inputSchema": {
                     "type": "object",
                     "properties": {
@@ -1956,6 +2029,12 @@ def handle_mcp_request(body: dict) -> dict:
                             "type": "object",
                             "additionalProperties": True,
                             "description": "Application context information"
+                        },
+                        "verbosity": {
+                            "type": "string",
+                            "description": "Response detail. 'full' (default) includes the framework plus an echo of your input; 'brief' omits the echoed input to save tokens.",
+                            "enum": ["full", "brief"],
+                            "default": "full"
                         }
                     },
                     "required": ["threat_model", "app_context"]
@@ -2010,7 +2089,7 @@ def handle_mcp_request(body: dict) -> dict:
         
         try:
             if tool_name == 'get_stride_threat_framework':
-                result = get_stride_threat_framework(arguments)
+                result = _apply_verbosity(get_stride_threat_framework(arguments), arguments)
                 return {
                     "jsonrpc": "2.0",
                     "result": {
@@ -2025,7 +2104,7 @@ def handle_mcp_request(body: dict) -> dict:
                 }
             
             elif tool_name == 'generate_threat_mitigations':
-                result = generate_threat_mitigations(arguments)
+                result = _apply_verbosity(generate_threat_mitigations(arguments), arguments)
                 return {
                     "jsonrpc": "2.0",
                     "result": {
@@ -2040,7 +2119,7 @@ def handle_mcp_request(body: dict) -> dict:
                 }
             
             elif tool_name == 'calculate_threat_risk_scores':
-                result = calculate_threat_risk_scores(arguments)
+                result = _apply_verbosity(calculate_threat_risk_scores(arguments), arguments)
                 return {
                     "jsonrpc": "2.0",
                     "result": {
@@ -2055,7 +2134,7 @@ def handle_mcp_request(body: dict) -> dict:
                 }
             
             elif tool_name == 'create_threat_attack_trees':
-                result = create_threat_attack_trees(arguments)
+                result = _apply_verbosity(create_threat_attack_trees(arguments), arguments)
                 return {
                     "jsonrpc": "2.0",
                     "result": {
@@ -2070,7 +2149,7 @@ def handle_mcp_request(body: dict) -> dict:
                 }
             
             elif tool_name == 'generate_security_tests':
-                result = generate_security_tests(arguments)
+                result = _apply_verbosity(generate_security_tests(arguments), arguments)
                 return {
                     "jsonrpc": "2.0",
                     "result": {
@@ -2100,7 +2179,7 @@ def handle_mcp_request(body: dict) -> dict:
                 }
             
             elif tool_name == 'validate_threat_coverage':
-                result = validate_threat_coverage(arguments)
+                result = _apply_verbosity(validate_threat_coverage(arguments), arguments)
                 return {
                     "jsonrpc": "2.0",
                     "result": {

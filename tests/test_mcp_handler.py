@@ -498,3 +498,96 @@ class TestMCPJsonRpcCompliance:
         assert 'error' in response
         assert 'result' not in response
         assert 'id' in response
+
+
+def _call_tool(name, arguments, request_id=1):
+    """Invoke a tool via handle_mcp_request and return the parsed JSON result."""
+    response = handle_mcp_request({
+        'jsonrpc': '2.0',
+        'method': 'tools/call',
+        'params': {'name': name, 'arguments': arguments},
+        'id': request_id,
+    })
+    assert 'result' in response, response
+    return json.loads(response['result']['content'][0]['text'])
+
+
+class TestMCPVerbosity:
+    """verbosity='brief' trims echoed input / large example blocks; 'full' is default."""
+
+    THREATS = [{'id': 'T1', 'category': 'Tampering', 'title': 'SQL injection'}]
+
+    def test_full_is_default_and_echoes_input(self):
+        """Default (no verbosity) keeps the input echo and worked examples."""
+        data = _call_tool('calculate_threat_risk_scores', {'threats': self.THREATS})
+        assert 'dread_framework' in data
+        assert 'threats' in data           # input echoed
+        assert 'scoring_examples' in data  # large example block present
+
+    def test_brief_drops_echo_and_examples_but_keeps_framework(self):
+        data = _call_tool('calculate_threat_risk_scores',
+                          {'threats': self.THREATS, 'verbosity': 'brief'})
+        assert 'dread_framework' in data       # rubric retained
+        assert 'analysis_guidance' in data     # guidance retained
+        assert 'next_steps' in data            # workflow retained
+        assert 'threats' not in data           # input echo dropped
+        assert 'scoring_guidance' not in data  # input echo dropped
+        assert 'scoring_examples' not in data  # large block dropped
+
+    def test_brief_mitigations_drops_threat_context(self):
+        data = _call_tool('generate_threat_mitigations',
+                          {'threats': self.THREATS, 'verbosity': 'brief'})
+        assert 'mitigation_framework' in data
+        assert 'threat_context' not in data
+
+    def test_brief_framework_drops_application_context(self):
+        data = _call_tool('get_stride_threat_framework',
+                          {'app_description': 'A web app', 'verbosity': 'brief'})
+        assert 'stride_framework' in data
+        assert 'application_context' not in data
+
+    def test_brief_validate_coverage_drops_input_echo(self):
+        data = _call_tool('validate_threat_coverage',
+                          {'threat_model': self.THREATS, 'app_context': {'app_type': 'web'},
+                           'verbosity': 'brief'})
+        assert 'coverage_framework' in data
+        assert 'threat_model' not in data
+        assert 'app_context' not in data
+
+    def test_unknown_verbosity_value_treated_as_full(self):
+        """Only 'brief' trims; any other value falls back to full for safety."""
+        data = _call_tool('calculate_threat_risk_scores',
+                          {'threats': self.THREATS, 'verbosity': 'nonsense'})
+        assert 'threats' in data
+        assert 'scoring_examples' in data
+
+    def test_tools_list_advertises_verbosity(self):
+        response = handle_mcp_request({'jsonrpc': '2.0', 'method': 'tools/list', 'id': 1})
+        tools = {t['name']: t for t in response['result']['tools']}
+        for name in ['get_stride_threat_framework', 'calculate_threat_risk_scores',
+                     'generate_threat_mitigations', 'create_threat_attack_trees',
+                     'generate_security_tests', 'validate_threat_coverage']:
+            props = tools[name]['inputSchema']['properties']
+            assert 'verbosity' in props, f'{name} missing verbosity'
+            assert props['verbosity']['enum'] == ['full', 'brief']
+
+
+class TestReportHouseStylePointer:
+    """The report skeleton surfaces the authoritative house-style resource URI."""
+
+    def _report(self):
+        response = handle_mcp_request({
+            'jsonrpc': '2.0',
+            'method': 'tools/call',
+            'params': {'name': 'generate_threat_report',
+                       'arguments': {'threat_model': [{'id': 'T1'}]}},
+            'id': 1,
+        })
+        return response['result']['content'][0]['text']
+
+    def test_report_references_report_format_resource(self):
+        report = self._report()
+        assert 'stride://skill/references/report-format.md' in report
+
+    def test_report_still_starts_with_title(self):
+        assert self._report().startswith('# STRIDE Threat Model Report')
