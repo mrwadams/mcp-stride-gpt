@@ -67,3 +67,6 @@ local_*.json
 *.log
 logs/
 .vercel
+
+# Doc review report (local only)
+doc-review.html

@@ -1,20 +1,26 @@
 # STRIDE GPT MCP Usage Examples
 
+> **How these tools work:** the MCP server is a *framework provider* — each tool
+> returns methodology, rubrics, or templates, and your LLM client performs the actual
+> analysis against them. In clients that support Agent Skills, the companion
+> `stride-threat-modelling` skill is the primary, richer path and runs standalone; use
+> these MCP tools when the skill isn't available. The transcripts below are illustrative.
+
 ## Basic Threat Analysis
 
 ```
 Human: I need to analyze threats for my e-commerce web application. It uses OAuth 2.0 authentication, is internet-facing, and handles payment card data and PII.
 
-Agent: I'll help you analyze threats using the STRIDE methodology. Let me use the analyze_application_threats tool.
+Agent: I'll help you analyze threats using the STRIDE methodology. Let me get the STRIDE framework, then enumerate threats against your system.
 
-[Tool call: analyze_application_threats]
+[Tool call: get_stride_threat_framework]
 - app_description: "E-commerce web application with user accounts, product catalog, shopping cart, and payment processing"
 - app_type: "Web Application"  
 - authentication_methods: ["OAuth 2.0"]
 - internet_facing: true
 - sensitive_data_types: ["Payment Cards", "PII"]
 
-[Tool result shows comprehensive threat model with 18 threats across all STRIDE categories]
+[Tool returns the STRIDE framework + guidance; the agent then enumerates threats across all six STRIDE categories against the described system]
 ```
 
 ## Complete Security Assessment
@@ -25,7 +31,7 @@ Human: Generate a complete security assessment including mitigations and risk sc
 Agent: I'll generate a comprehensive security assessment. Let me use multiple tools to analyze your threats, generate mitigations, calculate risk scores, and create a formatted report.
 
 [Tool calls in sequence:]
-1. analyze_application_threats (as above)
+1. get_stride_threat_framework (as above)
 2. generate_threat_mitigations using the threats from step 1
 3. calculate_threat_risk_scores using the threats from step 1  
 4. generate_threat_report combining all results
@@ -42,7 +48,7 @@ Agent: I'll analyze the repository using the GitHub MCP server first, then use S
 
 [Using GitHub MCP server to analyze repository structure, dependencies, and tech stack]
 
-[Tool call: analyze_application_threats using information gathered from repository]
+[Tool call: get_stride_threat_framework using information gathered from repository]
 - app_description: "React/Node.js web application with Express backend, PostgreSQL database, OAuth authentication..."
 - app_type: "Web Application"
 - authentication_methods: ["OAuth 2.0", "Session-based"]  
@@ -93,7 +99,7 @@ Agent: I'll analyze your Terraform infrastructure for security threats using bot
 - Extract cloud resources, networking, IAM policies, security groups
 - Identify data flows and trust boundaries
 
-[Tool call: analyze_application_threats using infrastructure context]
+[Tool call: get_stride_threat_framework using infrastructure context]
 - app_description: "AWS infrastructure with VPC, EC2 instances, RDS database, Application Load Balancer, S3 buckets, and IAM roles. Uses Terraform for Infrastructure-as-Code deployment..."
 - app_type: "Cloud Infrastructure"
 - authentication_methods: ["IAM Roles", "Security Groups", "Network ACLs"]
@@ -115,7 +121,7 @@ Agent: I'll combine Kubernetes MCP server analysis with STRIDE threat modeling f
 - Analyze RBAC policies and service accounts
 - Examine network policies and security contexts
 
-[Tool call: analyze_application_threats for containerized environment]
+[Tool call: get_stride_threat_framework for containerized environment]
 - app_description: "Microservices architecture on Kubernetes with multiple pods, services, ingress controllers, persistent volumes, and service mesh..."
 - app_type: "Container Orchestration Platform"
 - authentication_methods: ["Service Account Tokens", "RBAC", "Pod Security Standards"]
@@ -167,7 +173,7 @@ Agent: I'll analyze your container security using Docker Hub MCP for image analy
 - Analyze base image layers and installed packages
 - Review container configuration and exposed ports
 
-[Tool call: analyze_application_threats for containerized application]
+[Tool call: get_stride_threat_framework for containerized application]
 - app_description: "Containerized web application using Node.js Alpine base image, running on port 3000, with Redis and PostgreSQL containers. Uses Docker Compose for orchestration..."
 - app_type: "Containerized Application"
 - authentication_methods: ["JWT Tokens", "Container Registry Auth"]
