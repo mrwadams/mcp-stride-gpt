@@ -10,6 +10,9 @@ COPY server ./server
 COPY skills ./skills
 COPY app.py ./
 
+# The container has its own network namespace; published ports are the boundary.
+ENV MCP_HOST=0.0.0.0
+
 EXPOSE 8787
 
 CMD ["python", "app.py"]
