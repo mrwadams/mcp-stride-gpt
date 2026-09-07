@@ -61,8 +61,9 @@ def get_stride_threat_framework(args: Dict[str, Any]) -> Dict[str, Any]:
 ## Architecture
 
 The server lives in the `server/` package; `api/index.py` is a thin Vercel entry point that
-re-exports `server.http_handler.handler` (Vercel's runtime requires that class name). See
-`docs/repo.md` for the full layout.
+subclasses `server.http_handler.HTTPHandler` as `handler` (Vercel's runtime requires that
+class name, and its builder only recognises a real definition). See `docs/repo.md` for the
+full layout.
 
 - **server/tools.py**: The 8 tool implementations (frameworks, rubrics, templates)
 - **server/mcp.py**: JSON-RPC dispatch, protocol negotiation, tools/resources endpoints
@@ -70,7 +71,7 @@ re-exports `server.http_handler.handler` (Vercel's runtime requires that class n
 - **server/constants.py**: Error codes, payload limits, protocol versions, server identity
 - **server/validation.py**: `validate_json_complexity` (DoS protection)
 - **server/errors.py**: `sanitize_error`
-- **api/index.py**: Vercel entry point (re-export only — put real code in `server/`)
+- **api/index.py**: Vercel entry point (entry point only — put real code in `server/`)
 - **vercel.json**: Deployment configuration, incl. `includeFiles` for `skills/**` + `server/**`
 - **CLAUDE.md**: Development guidelines (this file)
 
