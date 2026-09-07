@@ -99,19 +99,36 @@ Add the hosted server to your Claude Code MCP configuration:
 claude mcp add stride-gpt https://mcp.stridegpt.ai/ --transport http
 ```
 
-### Run Locally with Docker
+### Self-Hosting
 
-Prefer to self-host instead of using the hosted server? The repo ships a container that
-serves the same MCP endpoint on port 8787:
+Prefer to self-host instead of using the hosted server? Both entry points below serve the
+same MCP endpoint on port 8787.
 
-```bash 
+**Container:**
+
+```bash
 docker build -t mcp-stride-gpt .
-docker run --rm -p 8787:8787 mcp-stride-gpt
+docker run --rm -p 127.0.0.1:8787:8787 mcp-stride-gpt
 ```
 
-quick test
+**Without Docker** — Python 3.12+, no dependencies beyond the standard library:
+
+```bash
+python app.py
 ```
-╰─$ curl http://127.0.0.1:8787                                        56 ↵
+
+The endpoint has no authentication and no rate limiting, so both commands keep it on
+loopback. Publishing it wider (`-p 8787:8787`, or `MCP_HOST=0.0.0.0 python app.py`) puts an
+unauthenticated endpoint on your network — do that only behind something that
+authenticates.
+
+Smoke-test it:
+
+```bash
+curl http://127.0.0.1:8787
+```
+
+```json
 {
   "name": "STRIDE GPT MCP Server",
   "version": "0.1.0",
@@ -132,8 +149,11 @@ quick test
 }
 ```
 
+Then point a client at it instead of the hosted server:
 
-
+```bash
+claude mcp add stride-gpt http://127.0.0.1:8787/ --transport http
+```
 
 ## Configuration
 
