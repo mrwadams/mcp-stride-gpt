@@ -13,7 +13,7 @@ import sys
 import os
 import json
 
-# Add api directory to path for imports
+# Add repo root to path so the `server` package imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from server.mcp import handle_mcp_request
