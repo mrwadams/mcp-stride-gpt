@@ -13,10 +13,11 @@ import sys
 import os
 import json
 
-# Add api directory to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'api'))
+# Add repo root to path so the `server` package imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from index import handle_mcp_request, ERROR_CODES
+from server.mcp import handle_mcp_request
+from server.constants import ERROR_CODES
 
 
 class TestMCPInitialize:
@@ -39,7 +40,7 @@ class TestMCPInitialize:
         """Version negotiation on the legacy handshake: echo a legacy version the client
         requests, and offer the latest legacy version when the client requests none, an
         unsupported one, or a modern one (initialize never negotiates up to modern)."""
-        from api.index import LEGACY_PROTOCOL_VERSIONS, LATEST_LEGACY_VERSION
+        from server.constants import LEGACY_PROTOCOL_VERSIONS, LATEST_LEGACY_VERSION
 
         # No protocolVersion requested -> server offers its latest legacy version.
         response = handle_mcp_request({'jsonrpc': '2.0', 'method': 'initialize', 'id': 1})

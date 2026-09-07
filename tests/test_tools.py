@@ -16,10 +16,10 @@ import pytest
 import sys
 import os
 
-# Add api directory to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'api'))
+# Add repo root to path so the `server` package imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from index import (
+from server.tools import (
     get_stride_threat_framework,
     generate_threat_mitigations,
     calculate_threat_risk_scores,

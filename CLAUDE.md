@@ -58,11 +58,26 @@ def get_stride_threat_framework(args: Dict[str, Any]) -> Dict[str, Any]:
     }
 ```
 
-## Serverless Architecture
+## Architecture
 
-- **api/index.py**: Single-file Vercel serverless function
-- **vercel.json**: Deployment configuration
+The server lives in the `server/` package; `api/index.py` is a thin Vercel entry point that
+subclasses `server.http_handler.HTTPHandler` as `handler` (Vercel's runtime requires that
+class name, and its builder only recognises a real definition). See `docs/repo.md` for the
+full layout.
+
+- **server/tools.py**: The 8 tool implementations (frameworks, rubrics, templates)
+- **server/mcp.py**: JSON-RPC dispatch, protocol negotiation, tools/resources endpoints
+- **server/http_handler.py**: HTTP transport — payload limits, Origin allow-list, headers
+- **server/constants.py**: Error codes, payload limits, protocol versions, server identity
+- **server/validation.py**: `validate_json_complexity` (DoS protection)
+- **server/errors.py**: `sanitize_error`
+- **api/index.py**: Vercel entry point (entry point only — put real code in `server/`)
+- **vercel.json**: Deployment configuration, incl. `includeFiles` for `skills/**` + `server/**`
 - **CLAUDE.md**: Development guidelines (this file)
+
+The split follows how the code actually changes: protocol work lands in `mcp.py`, threat
+modelling content in `tools.py`, and the two rarely move in the same commit. Keep it that
+way — new tools go in `tools.py`, new MCP methods in `mcp.py`.
 
 ## Key Principles
 
@@ -133,7 +148,7 @@ The MCP server implements several security controls to protect against common at
 
 **Purpose**: Prevent information disclosure through error messages (stack traces, file paths, internal details)
 
-**Implementation**: The `sanitize_error()` function in `api/index.py` (lines 37-65) provides:
+**Implementation**: The `sanitize_error()` function in `server/errors.py` provides:
 - Generic error messages for clients (no sensitive details)
 - Detailed error logging to server logs (stderr → Vercel logs)
 - Unique error IDs for correlating client reports with server logs
@@ -162,7 +177,7 @@ except Exception as e:
 - Max array length: 2000 elements
 - Max string length: 500KB
 
-**Implementation**: `validate_json_complexity()` recursively validates JSON structure before processing
+**Implementation**: `validate_json_complexity()` in `server/validation.py` recursively validates JSON structure before processing
 
 ### HTTP Security Headers
 
@@ -181,4 +196,4 @@ All responses include security headers:
 - Validate with real threat modeling scenarios
 - Ensure consistent behavior across different LLM clients
 
-**Local Development**: Modify `api/index.py` and deploy to Vercel for testing
+**Local Development**: Modify the relevant module under `server/` and deploy to Vercel for testing

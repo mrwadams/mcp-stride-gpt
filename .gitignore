@@ -50,10 +50,12 @@ htmlcov/
 .tox/
 coverage.xml
 
-# Temporary files (exclude organized test files in tests/ directory)
-!tests/test_*.py
+# Temporary files (the negations must follow the patterns they undo -- last match wins,
+# so listing them first silently ignored every new file under tests/)
 test_*.py
 *_test.py
+!tests/test_*.py
+!tests/*_test.py
 debug_*.py
 temp_*.py
 

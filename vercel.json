@@ -5,7 +5,10 @@
       "src": "api/index.py",
       "use": "@vercel/python",
       "config": {
-        "includeFiles": "skills/**"
+        "includeFiles": [
+          "skills/**",
+          "server/**"
+        ]
       }
     }
   ],
@@ -15,5 +18,7 @@
       "dest": "/api/index.py"
     }
   ],
-  "alias": ["mcp.stridegpt.ai"]
+  "alias": [
+    "mcp.stridegpt.ai"
+  ]
 }

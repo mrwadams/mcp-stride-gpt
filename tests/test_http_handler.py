@@ -14,15 +14,15 @@ import json
 import io
 from email.message import Message
 
-# Add api directory to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'api'))
+# Add repo root to path so the `server` package imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from index import (
-    handler,
-    handle_mcp_request,
-    validate_json_complexity,
+from server.http_handler import handler
+from server.mcp import handle_mcp_request
+from server.validation import validate_json_complexity
+from server.errors import sanitize_error
+from server.constants import (
     PAYLOAD_LIMITS,
-    sanitize_error,
     SUPPORTED_PROTOCOL_VERSIONS,
     LEGACY_PROTOCOL_VERSIONS,
     MODERN_PROTOCOL_VERSIONS,
@@ -196,7 +196,7 @@ class TestErrorCodes:
 
         assert 'error' in response
         # Should return INVALID_PARAMETER error
-        from index import ERROR_CODES
+        from server.constants import ERROR_CODES
         assert response['error']['code'] == ERROR_CODES['INVALID_PARAMETER']
 
 
@@ -543,17 +543,12 @@ class TestErrorSanitization:
 
     def test_tool_execution_error_sanitization(self):
         """Test that tool execution errors are sanitized in MCP responses."""
-        # Create a custom broken tool to test error sanitization
-        import sys
-        import os
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'api'))
-
-        # Temporarily replace one of the tool functions to throw an error
-        from index import handle_mcp_request
-        import index as index_module
+        # Create a custom broken tool to test error sanitization.
+        # server.mcp imports the tools by name, so patch the binding it actually calls.
+        from server import mcp as mcp_module
 
         # Save original function
-        original_function = index_module.get_stride_threat_framework
+        original_function = mcp_module.get_stride_threat_framework
 
         # Create a function that raises an error with sensitive information
         def broken_function(args):
@@ -561,7 +556,7 @@ class TestErrorSanitization:
 
         try:
             # Replace the function temporarily
-            index_module.get_stride_threat_framework = broken_function
+            mcp_module.get_stride_threat_framework = broken_function
 
             # Make a request that will trigger the broken function
             request = {
@@ -594,7 +589,7 @@ class TestErrorSanitization:
 
         finally:
             # Restore original function
-            index_module.get_stride_threat_framework = original_function
+            mcp_module.get_stride_threat_framework = original_function
 
     def test_error_id_uniqueness(self):
         """Test that each error gets a unique error ID."""
