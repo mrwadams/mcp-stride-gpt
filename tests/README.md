@@ -179,7 +179,7 @@ pytest
 
 ### Path Issues
 
-The tests add `api/` to the Python path automatically. If you see path-related errors, check that `api/index.py` exists.
+The tests add the repository root to the Python path automatically. If you see path-related errors, check that the `server/` package exists.
 
 ### Mock Issues
 

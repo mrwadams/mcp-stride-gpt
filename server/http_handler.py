@@ -298,5 +298,5 @@ class handler(BaseHTTPRequestHandler):
 
 
 # Vercel's Python runtime requires the entry-point class to be named `handler`;
-# `HTTPHandler` is the readable alias used by the standalone app.py server.
+# `HTTPHandler` is the readable alias for callers without that constraint.
 HTTPHandler = handler

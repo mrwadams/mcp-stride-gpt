@@ -474,7 +474,7 @@ Extract: JWT auth, user/payment data, Stripe integration
 
 ### Serverless Development
 
-This MCP server is deployed as a serverless function on Vercel. The main implementation is in `api/index.py`.
+This MCP server is deployed as a serverless function on Vercel. The implementation lives in the `server/` package; `api/index.py` is the entry point Vercel loads. See `docs/repo.md` for the layout.
 
 **Local Development:**
 ```bash
@@ -510,7 +510,7 @@ pytest
 
 The server is built as a serverless HTTP function deployed on Vercel and follows these design principles:
 
-- **Serverless HTTP Implementation**: Single-file Python serverless function handling MCP JSON-RPC over HTTP
+- **Serverless HTTP Implementation**: Python serverless function handling MCP JSON-RPC over HTTP
 - **Framework-Based Design**: MCP server provides comprehensive threat modeling frameworks and guidance; LLM clients perform the actual semantic analysis and threat generation  
 - **Composable MCP Pattern**: Designed to work alongside other specialized MCP servers (e.g., GitHub MCP for repository analysis)
 - **Structured JSON Output**: Returns structured JSON data with comprehensive framework information
@@ -520,7 +520,8 @@ The server is built as a serverless HTTP function deployed on Vercel and follows
 - **Protocol Support**: Implements both the legacy `initialize` handshake (protocol versions `2025-03-26` through `2025-11-25`) and the modern stateless `server/discover` model (`2026-07-28`), negotiating the version the client requests
 
 **Key Components:**
-- `api/index.py`: Main serverless function with all MCP tools and HTTP request handling
+- `api/index.py`: Vercel entry point
+- `server/`: The server package — tools, MCP dispatch, and HTTP request handling
 - `vercel.json`: Deployment configuration and routing
 - MCP JSON-RPC protocol implementation for tool discovery and execution
 
