@@ -17,9 +17,11 @@ import sys
 import os
 
 # Add api directory to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'api'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from index import (
+# sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'api'))
+
+from server.tools import (
     get_stride_threat_framework,
     generate_threat_mitigations,
     calculate_threat_risk_scores,
