@@ -99,6 +99,61 @@ Add the hosted server to your Claude Code MCP configuration:
 claude mcp add stride-gpt https://mcp.stridegpt.ai/ --transport http
 ```
 
+### Self-Hosting
+
+Prefer to self-host instead of using the hosted server? Both entry points below serve the
+same MCP endpoint on port 8787.
+
+**Container:**
+
+```bash
+docker build -t mcp-stride-gpt .
+docker run --rm -p 127.0.0.1:8787:8787 mcp-stride-gpt
+```
+
+**Without Docker** — Python 3.12+, no dependencies beyond the standard library:
+
+```bash
+python app.py
+```
+
+The endpoint has no authentication and no rate limiting, so both commands keep it on
+loopback. Publishing it wider (`-p 8787:8787`, or `MCP_HOST=0.0.0.0 python app.py`) puts an
+unauthenticated endpoint on your network — do that only behind something that
+authenticates.
+
+Smoke-test it:
+
+```bash
+curl http://127.0.0.1:8787
+```
+
+```json
+{
+  "name": "STRIDE GPT MCP Server",
+  "version": "0.1.0",
+  "description": "Professional threat modeling server using the STRIDE methodology",
+  "tools": [
+    "get_stride_threat_framework",
+    "generate_threat_mitigations",
+    "create_threat_attack_trees",
+    "calculate_threat_risk_scores",
+    "generate_security_tests",
+    "generate_threat_report",
+    "validate_threat_coverage",
+    "get_repository_analysis_guide"
+  ],
+  "endpoints": {
+    "POST /": "MCP JSON-RPC endpoint"
+  }
+}
+```
+
+Then point a client at it instead of the hosted server:
+
+```bash
+claude mcp add stride-gpt http://127.0.0.1:8787/ --transport http
+```
 
 ## Configuration
 

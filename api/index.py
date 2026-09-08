@@ -1,8 +1,8 @@
 """Vercel serverless entry point.
 
 Vercel's Python runtime imports this module and instantiates the class named `handler`.
-The implementation lives in the `server` package, so the same code can serve the hosted
-deployment and any other transport built on top of it.
+The implementation lives in the `server` package, so the same code serves the hosted
+deployment and the local/container `app.py` server.
 """
 
 import os
