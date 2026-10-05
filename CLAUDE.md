@@ -27,11 +27,11 @@ Practical consequences when editing this repo:
   If you change one, sync the other; the skill is authoritative where available.
 - See `MCP_DESIGN_PRINCIPLES.md` for the "information provider, not analyzer" rationale.
 
-## CRITICAL: No Keyword Matching
+## No keyword matching
 
-**NEVER** use brittle keyword matching patterns in MCP server code. The MCP server should provide frameworks and instructions for the LLM client to perform the actual semantic analysis.
+Do not use keyword matching in MCP server code. It is brittle, and semantic analysis is the LLM client's job. The server provides the frameworks and instructions for that analysis.
 
-### Wrong Approach (DON'T DO THIS):
+### Wrong approach
 ```python
 # Brittle keyword matching - AVOID
 if any(term in text.lower() for term in ["payment", "financial"]):
@@ -40,7 +40,7 @@ if any(term in combined_text for term in ["system compromise", "admin"]):
     score += 3
 ```
 
-### Correct Approach (DO THIS):
+### Correct approach
 ```python
 def get_stride_threat_framework(args: Dict[str, Any]) -> Dict[str, Any]:
     """Provide STRIDE threat modeling framework for LLM client analysis.
@@ -90,7 +90,7 @@ way — new tools go in `tools.py`, new MCP methods in `mcp.py`.
 
 ## GitHub Integration
 
-**DO NOT** build custom GitHub integration. Instead, recommend users install the official GitHub MCP server:
+Do not build custom GitHub integration. Recommend users install the official GitHub MCP server:
 
 - [GitHub MCP Server](https://github.com/github/github-mcp-server)
 - Users can combine GitHub MCP server (for repo analysis) with STRIDE GPT MCP server (for threat modeling)
